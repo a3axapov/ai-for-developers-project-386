@@ -34,3 +34,17 @@
 - Preserve `.github/workflows/hexlet-check.yml` unchanged; project-owned CI belongs in `.github/workflows/ci.yml`.
 - Keep `gradlew` executable with LF endings; `gradlew.bat` is the Windows wrapper, not a source to translate. Tasks target Linux/macOS or WSL.
 - Consult `README.md` for product scope before implementing booking features; its development section covers setup and local overrides.
+
+## Agent skills
+
+### Issue tracker
+
+Issues and specs live in GitHub Issues. Read `docs/agents/issue-tracker.md` before tracker operations.
+
+### Triage labels
+
+Five canonical triage labels are used. Read `docs/agents/triage-labels.md` before applying triage labels.
+
+### Domain docs
+
+Single-context layout. Before exploring domain concepts or architectural decisions, read `docs/agents/domain.md`.
