@@ -32,6 +32,7 @@ Spring Boot управляет версиями своих стартеров и
 | typescript                                  | 6.0.3   | 7.0.2                               |
 | @types/react / @types/react-dom             | 19.3.0  | 19.3.0                              |
 | @types/node                                 | 26.6.6  | 26.6.6                              |
+| @playwright/test                            | 1.65.0  | 1.65.0                              |
 | @typespec/compiler, http, openapi, openapi3 | 1.18.0  | 1.18.0                              |
 | @hey-api/openapi-ts                         | 0.99.0  | 0.99.0                              |
 | eslint                                      | 10.14.0 | 10.14.0                             |
@@ -45,6 +46,9 @@ Spring Boot управляет версиями своих стартеров и
 TypeScript 7 пока не выбираем: `typescript-eslint@8.72.2` заявляет поддержку
 TypeScript `>=4.8.4 <6.1.0`. `@typespec/rest` пока не нужен и не установлен.
 Дополнительные peer-зависимости TypeSpec закреплены npm lock-файлом.
+
+Playwright используется только для браузерных тестов. Chromium устанавливается
+отдельно через `mise run test:browser:install`; в production-образ он не входит.
 
 ## Окружение
 

@@ -3,6 +3,8 @@ build/
 .gradle/
 .agents/
 frontend/dist/
+frontend/test-results/
+frontend/playwright-report/
 frontend/src/api/generated/
 api/openapi/
 package-lock.json

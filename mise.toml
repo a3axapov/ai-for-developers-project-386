@@ -54,6 +54,14 @@ run = "npm audit"
 description = "Run JUnit tests, including a real HTTP smoke test"
 run = "./gradlew --no-daemon test"
 
+[tasks."test:browser:install"]
+description = "Install Chromium and its system dependencies for Playwright"
+run = "npm exec --workspace frontend -- playwright install --with-deps chromium"
+
+[tasks."test:browser"]
+description = "Build the frontend and test guest and owner navigation in Chromium"
+run = "npm run test:e2e --workspace frontend"
+
 [tasks.build]
 description = "Build a runnable JAR containing the frontend"
 run = "./gradlew --no-daemon build"

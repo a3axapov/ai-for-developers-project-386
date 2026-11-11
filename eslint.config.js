@@ -10,6 +10,8 @@ export default defineConfig([
     '**/node_modules/**',
     '**/dist/**',
     '**/build/**',
+    '**/test-results/**',
+    '**/playwright-report/**',
     'frontend/src/api/generated/**',
   ]),
   {
