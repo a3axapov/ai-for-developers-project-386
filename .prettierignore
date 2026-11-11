@@ -1,6 +1,7 @@
 node_modules/
 build/
 .gradle/
+.agents/
 frontend/dist/
 frontend/src/api/generated/
 api/openapi/
