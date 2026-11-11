@@ -1,0 +1,95 @@
+min_version = "2026.11.6"
+
+[settings]
+experimental = true
+
+[tools]
+java = "temurin-25.0.5+8.0.LTS"
+"npm:npm" = "12.2.2"
+node = "26.13.0"
+hk = "2.12.0"
+pitchfork = "2.34.0"
+
+[env]
+SERVER_PORT = "8080"
+VITE_PORT = "5173"
+VITE_API_TARGET = "http://127.0.0.1:8080"
+IMAGE_NAME = "calendar:local"
+
+[hooks]
+postinstall = { task = "install" }
+
+[tasks.install]
+description = "Install locked npm dependencies and Git hooks"
+run = ["npm ci", "mise run hooks:install"]
+
+[tasks."hooks:install"]
+description = "Install hk hooks locally (not in CI or Docker)"
+run = 'if [ -z "${CI:-}" ] && [ -e .git ]; then hk install; fi'
+
+[tasks."api:generate"]
+description = "Generate OpenAPI and the TypeScript client from TypeSpec"
+run = "npm run api:generate"
+
+[tasks."api:check"]
+description = "Check that committed API artifacts match TypeSpec"
+run = "npm run api:check"
+
+[tasks.lint]
+description = "Check Java, TypeScript, TypeSpec and formatting"
+run = ["npm run lint", "./gradlew --no-daemon checkstyleMain checkstyleTest"]
+
+[tasks.format]
+description = "Format frontend, API source and project configuration"
+run = ["npm run format", "npm exec -- tsp format api/main.tsp"]
+
+[tasks.typecheck]
+run = "npm run typecheck"
+
+[tasks.audit]
+description = "Report npm advisories (including build-time dependencies)"
+run = "npm audit"
+
+[tasks.test]
+description = "Run JUnit tests, including a real HTTP smoke test"
+run = "./gradlew --no-daemon test"
+
+[tasks.build]
+description = "Build a runnable JAR containing the frontend"
+run = "./gradlew --no-daemon build"
+
+[tasks.check]
+description = "Run the same checks locally and in CI"
+run = [
+  "mise run api:check",
+  "mise run lint",
+  "mise run typecheck",
+  "mise run test",
+  "npm run build --workspace frontend",
+]
+
+[tasks.dev]
+description = "Start backend and frontend in the background"
+depends = ["api:generate"]
+run = "mise daemons start"
+
+[tasks.stop]
+run = "mise daemons stop"
+
+[tasks."image:build"]
+description = "Build the production image"
+run = 'docker build --tag "$IMAGE_NAME" .'
+
+[tasks."image:test"]
+description = "Smoke-test HTTP API and frontend in the production image"
+run = "node scripts/smoke-image.mjs"
+
+[daemons.backend]
+run = "exec ./gradlew --no-daemon bootRun"
+ready_port = 8080
+ready_cmd = "node scripts/wait-http.mjs http://127.0.0.1:8080/api/health"
+
+[daemons.frontend]
+run = "exec npm run dev --workspace frontend"
+depends = ["backend"]
+ready_port = 5173

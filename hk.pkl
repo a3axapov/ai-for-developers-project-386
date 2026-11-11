@@ -1,0 +1,17 @@
+amends "package://github.com/jdx/hk/releases/download/v2.12.0/hk@2.12.0#/Config.pkl"
+
+hooks {
+  ["pre-commit"] {
+    fix = false
+    stage = false
+    stash = "git"
+    steps {
+      ["lint"] { check = "mise run lint" }
+    }
+  }
+  ["pre-push"] {
+    steps {
+      ["check"] { check = "mise run check" }
+    }
+  }
+}

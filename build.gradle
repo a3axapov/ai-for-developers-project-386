@@ -1,0 +1,68 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '4.1.2'
+	id 'io.spring.dependency-management' version '1.1.7'
+	id 'checkstyle'
+}
+
+group = 'com.testproject'
+version = '0.0.1-SNAPSHOT'
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(25)
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+	testImplementation 'org.springframework.boot:spring-boot-starter-actuator-test'
+	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+checkstyle {
+	toolVersion = '14.4.0'
+	maxWarnings = 0
+}
+
+dependencyLocking {
+	lockAllConfigurations()
+	lockMode = LockMode.STRICT
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}
+
+tasks.register('frontendBuild', Exec) {
+	description = 'Generate the API client and build the frontend'
+	workingDir = projectDir
+	commandLine 'npm', 'run', 'build'
+	inputs.files('package.json', 'package-lock.json')
+	inputs.dir('api')
+	inputs.dir('scripts')
+	inputs.files(fileTree('frontend') {
+		exclude 'node_modules/**', 'dist/**'
+	})
+	outputs.dir('frontend/dist')
+	onlyIf { !project.hasProperty('frontendPrebuilt') }
+}
+
+tasks.named('bootJar') {
+	dependsOn tasks.named('frontendBuild')
+	archiveFileName = 'calendar.jar'
+	from('frontend/dist') {
+		into 'BOOT-INF/classes/static'
+	}
+	doFirst {
+		if (!file('frontend/dist/index.html').isFile()) {
+			throw new GradleException('Frontend is missing. Run npm run build first.')
+		}
+	}
+}

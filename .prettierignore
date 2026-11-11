@@ -1,0 +1,13 @@
+node_modules/
+build/
+.gradle/
+frontend/dist/
+frontend/src/api/generated/
+api/openapi/
+package-lock.json
+gradlew
+gradlew.bat
+HELP.md
+README.md.old
+.github/workflows/hexlet-check.yml
+.github/workflows/README.md

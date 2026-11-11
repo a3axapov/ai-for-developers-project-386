@@ -1,0 +1,11 @@
+emit:
+  - '@typespec/openapi3'
+options:
+  '@typespec/openapi3':
+    emitter-output-dir: '{output-dir}'
+    output-file: openapi.yaml
+    openapi-versions:
+      - 3.0.0
+linter:
+  extends:
+    - '@typespec/http/all'

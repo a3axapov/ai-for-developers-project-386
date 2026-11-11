@@ -58,3 +58,123 @@
 2. **OpenAPI-спецификация** — генерируется из TypeSpec-контракта.
 
 API-клиент генерируется по OpenAPI-спецификации и вручную не пишется.
+
+## Разработка
+
+Стек: Spring Boot / Java 25, React / TypeScript / Vite, Gradle, JUnit,
+Checkstyle, ESLint и Prettier. Версии и причины выбора описаны
+в [матрице зависимостей](docs/toolchain.md).
+
+### Подготовка
+
+Установите [mise](https://mise.jdx.dev/getting-started.html) версии **2026.11.6**
+и добавьте его в `PATH`. Для автоматического окружения в интерактивном shell
+используйте `mise activate`; команды `mise run` работают и без активации.
+
+```sh
+mise trust
+mise install
+mise run check
+```
+
+`mise install` устанавливает закреплённые инструменты, затем через postinstall
+запускает `npm ci` и устанавливает Git-хуки hk. В CI Git-хуки не устанавливаются.
+Повторная установка зависимостей: `mise run install`.
+
+Для локальной разработки Docker и база данных пока не нужны. Docker Engine
+с BuildKit нужен для сборки и проверки поставляемого образа.
+
+### Запуск
+
+```sh
+mise run dev
+mise daemons status
+mise daemons logs backend frontend
+mise run stop
+```
+
+- Интерфейс: <http://127.0.0.1:5173>.
+- API: <http://127.0.0.1:8080/api/health>.
+- Vite проксирует `/api` на Spring Boot; CORS в разработке не требуется.
+- Серверы работают в фоне под управлением pitchfork, а не через `&`.
+
+Локальные настройки можно переопределить в игнорируемом `mise.local.toml`.
+При смене портов согласованно измените `SERVER_PORT`, `VITE_PORT`,
+`VITE_API_TARGET` и readiness-порты в определениях daemons.
+
+Например, если порт 8080 занят, создайте `mise.local.toml`:
+
+```toml
+[env]
+SERVER_PORT = "18080"
+VITE_API_TARGET = "http://127.0.0.1:18080"
+
+[daemons.backend]
+run = "exec ./gradlew --no-daemon bootRun"
+ready_port = 18080
+ready_cmd = "node scripts/wait-http.mjs http://127.0.0.1:18080/api/health"
+```
+
+Переопределение daemon заменяет его описание целиком. После изменения настроек
+перезапустите daemons через `mise daemons restart`.
+
+### Контракт и клиент
+
+```text
+api/main.tsp
+  → api/openapi/openapi.yaml
+  → frontend/src/api/generated/
+```
+
+```sh
+mise run api:generate
+mise run api:check
+```
+
+Все три артефакта хранятся в Git. Спецификация OpenAPI и TypeScript-клиент
+генерируются, вручную не редактируются. `api:check` повторяет генерацию во
+временном каталоге и сравнивает содержимое, не изменяя рабочие файлы.
+Экран использует сгенерированную функцию `getHealth`.
+
+### Проверки и сборка
+
+```sh
+mise run check       # API-артефакты, линтеры, форматирование, типы, JUnit, Vite build
+mise run format      # исправить форматирование JS/TS/JSON/YAML/Markdown и TypeSpec
+mise run test        # JUnit с реальным HTTP-запросом к серверу на случайном порту
+mise run build       # build/libs/calendar.jar, включая фронтенд
+mise run audit       # известные npm advisories, включая инструменты разработки
+```
+
+Java-проверки запускаются через `./gradlew`; Linux/macOS-скрипт уже включён
+в проект и должен храниться с исполняемым битом. Для Windows сохранён `gradlew.bat`.
+Окончания строк задаются в `.gitattributes`. Задачи mise ориентированы на
+Linux/macOS; в Windows используйте WSL.
+
+hk запускает `mise run lint` перед коммитом и полный `mise run check` перед push.
+GitHub Actions использует ту же команду `mise run check`, затем собирает
+и проверяет Docker-образ. Workflow Hexlet остаётся отдельным и неизменным.
+
+### Docker
+
+```sh
+mise run image:build
+mise run image:test
+docker run --rm -p 127.0.0.1:8080:8080 calendar:local
+```
+
+Либо `docker compose up --build`; остановка — `docker compose down`.
+
+Один multi-stage образ содержит Spring Boot JAR со статическим фронтендом.
+Node.js и Gradle нужны только в build-стадиях. Runtime работает от пользователя
+`10001:10001`; API и интерфейс доступны на одном порту 8080.
+
+`image:test` запускает временный контейнер на свободном локальном порту,
+проверяет API, HTML, JS-ресурс, fallback клиентского маршрута и корректные 404,
+затем останавливает и удаляет контейнер. Публикация образа в registry пока
+не настроена: для неё нужно выбрать registry и права доступа.
+
+### Технический долг
+
+Объединение Docker-проверок в одну команду и политика npm audit отложены;
+контекст и критерии закрытия записаны в [реестре технического долга](docs/technical-debt.md).

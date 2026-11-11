@@ -1,0 +1,17 @@
+.gradle/
+build/
+node_modules/
+frontend/dist/
+*.tsbuildinfo
+.idea/
+.vscode/
+*.iml
+.DS_Store
+.env
+.env.*
+!.env.example
+mise.local.toml
+mise.*.local.toml
+.miserc.local.toml
+hk.local.pkl
+*.log

@@ -1,0 +1,17 @@
+* text=auto eol=lf
+
+gradlew text eol=lf
+*.sh text eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+*.jar binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+
+api/openapi/** linguist-generated=true
+frontend/src/api/generated/** linguist-generated=true
