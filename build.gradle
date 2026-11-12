@@ -37,11 +37,10 @@ tasks.register('generateServerContract', JavaExec) {
 	description = 'Generate Spring interfaces and transport models from OpenAPI'
 	classpath = configurations.openApiGenerator
 	mainClass = 'org.openapitools.codegen.OpenAPIGenerator'
-	args 'generate', '-g', 'spring',
+	args 'generate',
 		'-i', providers.gradleProperty('apiInput').getOrElse('api/openapi/openapi.yaml'),
 		'-o', providers.gradleProperty('apiOutput').getOrElse('api/server'),
-		'-c', 'api/server-generator.json',
-		'--global-property', 'apis,models,apiTests=false,modelTests=false,apiDocs=false,modelDocs=false'
+		'-c', 'api/server-generator.json'
 }
 
 checkstyle {

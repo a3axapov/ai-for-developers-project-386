@@ -56,6 +56,7 @@ class InitialConfigurationTests {
     static String[][] validConfiguration() {
         return new String[][] {
             {"  Анна   Петрова  ", "  ANNA-1  ", "Анна Петрова", "anna-1"},
+            {"Анна", "\u00a0OWNER\u00a0", "Анна", "owner"},
             {"Я", "abc", "Я", "abc"},
             {"😀".repeat(100), "a".repeat(30), "😀".repeat(100), "a".repeat(30)}
         };
@@ -78,6 +79,7 @@ class InitialConfigurationTests {
             {"name", "a".repeat(101)},
             {"name", "Owner\nName"},
             {"name", "Owner\u200bName"},
+            {"name", "\u034f"},
             {"username", "ab"},
             {"username", "a".repeat(31)},
             {"username", "owner-"},

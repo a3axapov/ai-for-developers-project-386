@@ -70,16 +70,12 @@ try {
         generatorClasspath,
         'org.openapitools.codegen.OpenAPIGenerator',
         'generate',
-        '-g',
-        'spring',
         '-i',
         join(openapiDirectory, 'openapi.yaml'),
         '-o',
         serverDirectory,
         '-c',
         'api/server-generator.json',
-        '--global-property',
-        'apis,models,apiTests=false,modelTests=false,apiDocs=false,modelDocs=false',
       ]
     : [
         '--no-daemon',

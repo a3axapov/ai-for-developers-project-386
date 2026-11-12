@@ -14,7 +14,7 @@ public record InitialCalendarSettings(String name, String username, String timeZ
         name = printable(name, "name").replaceAll("\\p{Zs}+", " ").strip();
         int length = name.codePointCount(0, name.length());
         require(length >= 1 && length <= 100, "name", "expected 1–100 printable characters");
-        username = printable(username, "username").strip().toLowerCase(Locale.ROOT);
+        username = printable(username, "username").replaceAll("\\p{Zs}+", " ").strip().toLowerCase(Locale.ROOT);
         require(username.matches("[a-z0-9][a-z0-9-]{1,28}[a-z0-9]"), "username",
                 "expected 3–30 letters, digits or hyphens, starting and ending with a letter or digit");
         require(timeZone != null && ZoneId.getAvailableZoneIds().contains(timeZone),
@@ -31,6 +31,7 @@ public record InitialCalendarSettings(String name, String username, String timeZ
         require(value != null, property, "value is required");
         require(value.codePoints().noneMatch(code -> Character.isISOControl(code)
                 || Character.getType(code) == Character.FORMAT
+                || code == 0x034f // Combining Grapheme Joiner is invisible but categorized as a mark.
                 || Character.getType(code) == Character.SURROGATE
                 || Character.getType(code) == Character.UNASSIGNED
                 || Character.getType(code) == Character.LINE_SEPARATOR

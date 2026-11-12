@@ -1,4 +1,13 @@
 {
+  "generatorName": "spring",
+  "globalProperties": {
+    "apis": "",
+    "models": "",
+    "apiTests": "false",
+    "modelTests": "false",
+    "apiDocs": "false",
+    "modelDocs": "false"
+  },
   "apiPackage": "com.testproject.calendar.generated.api",
   "modelPackage": "com.testproject.calendar.generated.model",
   "interfaceOnly": true,
