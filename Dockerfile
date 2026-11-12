@@ -7,7 +7,7 @@ RUN npm ci
 COPY frontend frontend
 RUN npm run build --workspace frontend
 
-FROM eclipse-temurin:25.0.5_8-jdk-noble@sha256:95e350ad1eb738f943e141640f7e3d797e483359a3b33c3864255bfd1ad71f8a AS backend
+FROM eclipse-temurin:26.0.2.1_1-jdk-noble@sha256:9c0e8eddecccc0d5679b317b0c90fa7103ad25cae33df1c00280675eb681c7f8 AS backend
 WORKDIR /workspace
 COPY gradlew build.gradle settings.gradle gradle.lockfile ./
 COPY gradle gradle
@@ -16,7 +16,7 @@ COPY api/server api/server
 COPY --from=frontend /workspace/frontend/dist frontend/dist
 RUN ./gradlew --no-daemon bootJar -PfrontendPrebuilt=true
 
-FROM eclipse-temurin:25.0.5_8-jre-noble@sha256:a98128a57de944a72bd31fbc79b898edd5a5864d3652071d5bbd2160ab7d7dce AS runtime
+FROM eclipse-temurin:26.0.2.1_1-jre-noble@sha256:adfd44c114916dc79fa9a24087fbac34252096edb9892d1c2d9d82db3f8947b3 AS runtime
 WORKDIR /app
 RUN groupadd --gid 10001 calendar \
     && useradd --uid 10001 --gid calendar --no-create-home --home-dir /app calendar
