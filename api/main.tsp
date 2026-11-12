@@ -20,3 +20,27 @@ model Health {
 @operationId("getHealth")
 @doc("Check that the application is running.")
 op getHealth(): Health;
+
+@doc("The single calendar owner's current profile.")
+model OwnerProfile {
+  name: string;
+  username: string;
+  timeZone: string;
+  bookingEnabled: boolean;
+
+  @minValue(1)
+  version: int64;
+
+  @doc("Same-origin public booking page path.")
+  bookingUrl: string;
+}
+
+@get
+@route("/owner/profile")
+@tag("Owner")
+@operationId("getOwnerProfile")
+@doc("Read the calendar owner's profile.")
+op getOwnerProfile(): {
+  @header("Cache-Control") cacheControl: "no-store";
+  @body body: OwnerProfile;
+};

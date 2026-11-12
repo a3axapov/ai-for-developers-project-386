@@ -23,8 +23,7 @@
 
 - Run commands from the repository root through mise. Bootstrap with `mise trust` then `mise install`; its postinstall hook runs `npm ci` and installs hk hooks outside CI. `.npmrc` enforces exact Node/npm versions, so system npm may fail even when Node matches.
 - Keep `npm:npm` before `node` in `mise.toml`: otherwise Node's bundled npm takes precedence. Ensure the mise executable itself is on `PATH` because tasks invoke mise recursively.
-- `mise run check` is the local/CI gate: generated-artifact check → lint/format checks → TypeScript check → JUnit → frontend build. It does **not** build or test the Docker image.
-- When introducing full-stack browser checks, include them in `mise run check` so one command runs all verification locally and in CI, including real HTTP API tests and Playwright against the built application with its real server. Update this command's description and CI together; browser installation remains an environment setup step, and Docker image checks remain separate.
+- `mise run check` is the single local/CI verification command: generated-artifact check → lint/format checks → TypeScript check → JUnit including real HTTP API tests → application build with the frontend → Playwright against real Spring Boot servers. Install Chromium and its system dependencies once with `mise run test:browser:install`. Docker image checks remain separate.
 - Focused Java test: `mise exec -- ./gradlew --no-daemon test --tests 'com.testproject.calendar.CalendarApplicationTests.applicationRespondsToHttpRequest'`. Tests start their own HTTP server on a random port; no running dev server, Docker, or database is required.
 - Frontend-only: `mise run typecheck` or `mise exec -- npm run build --workspace frontend`. The workspace build consumes the existing generated client; it does not regenerate it.
 - After packaging changes, run `mise run image:build` then `mise run image:test`. The latter creates and removes its own container on a random loopback port.
@@ -32,7 +31,7 @@
 ## API and packaging boundaries
 
 - The TypeSpec contract is the API source of truth. Change the contract sources, run `mise run api:generate`, and include all affected generated OpenAPI, server models and interfaces, and client SDK artifacts together.
-- Generated paths: `api/openapi/` and `frontend/src/api/generated/`. Never edit files in these paths manually; update them through generation. When server generation is introduced, add its exact output path here.
+- Generated paths: `api/openapi/`, `api/server/` and `frontend/src/api/generated/`. Never edit files in these paths manually; update them through generation.
 - Keep generated artifacts committed. `mise run api:check` must regenerate every artifact set in a temporary directory and compare both contents and complete file lists, detecting added, removed, and changed files without rewriting the working tree. Keep generator versions pinned and treat TypeSpec warnings as errors.
 - When adding or changing server generation, compile application controllers against the generated interfaces and verify compatibility through a real HTTP test; successful generation alone is insufficient.
 - There is one npm workspace (`frontend`), with shared tooling and one lockfile at the root. Install dependencies from the root.

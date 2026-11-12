@@ -1,16 +1,15 @@
 package com.testproject.calendar.api;
 
-import org.springframework.web.bind.annotation.GetMapping;
+import com.testproject.calendar.generated.api.DefaultApi;
+import com.testproject.calendar.generated.model.Health;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-public class HealthController {
+public class HealthController implements DefaultApi {
 
-    @GetMapping("/api/health")
-    public Health health() {
-        return new Health("UP");
-    }
-
-    public record Health(String status) {
+    @Override
+    public ResponseEntity<Health> getHealth() {
+        return ResponseEntity.ok(new Health(Health.StatusEnum.UP));
     }
 }

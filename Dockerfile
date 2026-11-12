@@ -4,16 +4,15 @@ RUN npm install --global npm@12.2.2
 COPY package.json package-lock.json .npmrc ./
 COPY frontend/package.json frontend/package.json
 RUN npm ci
-COPY api api
-COPY scripts/generate-api.mjs scripts/generate-api.mjs
 COPY frontend frontend
-RUN npm run build
+RUN npm run build --workspace frontend
 
 FROM eclipse-temurin:25.0.5_8-jdk-noble@sha256:95e350ad1eb738f943e141640f7e3d797e483359a3b33c3864255bfd1ad71f8a AS backend
 WORKDIR /workspace
 COPY gradlew build.gradle settings.gradle gradle.lockfile ./
 COPY gradle gradle
 COPY src src
+COPY api/server api/server
 COPY --from=frontend /workspace/frontend/dist frontend/dist
 RUN ./gradlew --no-daemon bootJar -PfrontendPrebuilt=true
 

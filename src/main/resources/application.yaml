@@ -1,3 +1,13 @@
 spring:
   application:
     name: calendar
+
+calendar:
+  initial:
+    name: Владелец календаря
+    username: owner
+    time-zone: Europe/Moscow
+    booking-enabled: false
+    working-days: [MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY]
+    work-start: '09:00'
+    work-end: '18:00'

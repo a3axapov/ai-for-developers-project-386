@@ -35,7 +35,7 @@ for (const destination of [
   {
     path: '/admin',
     link: 'Владельцу',
-    title: 'Раздел владельца в разработке',
+    title: 'Профиль владельца',
   },
 ]) {
   test(`переход на ${destination.path} и возврат на главную`, async ({

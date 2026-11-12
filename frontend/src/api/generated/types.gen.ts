@@ -14,6 +14,21 @@ export type Health = {
     status: 'UP';
 };
 
+/**
+ * The single calendar owner's current profile.
+ */
+export type OwnerProfile = {
+    name: string;
+    username: string;
+    timeZone: string;
+    bookingEnabled: boolean;
+    version: number;
+    /**
+     * Same-origin public booking page path.
+     */
+    bookingUrl: string;
+};
+
 export type GetHealthData = {
     body?: never;
     path?: never;
@@ -29,3 +44,19 @@ export type GetHealthResponses = {
 };
 
 export type GetHealthResponse = GetHealthResponses[keyof GetHealthResponses];
+
+export type GetOwnerProfileData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/owner/profile';
+};
+
+export type GetOwnerProfileResponses = {
+    /**
+     * The request has succeeded.
+     */
+    200: OwnerProfile;
+};
+
+export type GetOwnerProfileResponse = GetOwnerProfileResponses[keyof GetOwnerProfileResponses];

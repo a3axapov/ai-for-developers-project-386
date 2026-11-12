@@ -2,7 +2,8 @@ openapi: 3.0.0
 info:
   title: Calendar API
   version: 0.0.0
-tags: []
+tags:
+  - name: Owner
 paths:
   /api/health:
     get:
@@ -16,6 +17,27 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Health'
+  /api/owner/profile:
+    get:
+      operationId: getOwnerProfile
+      description: Read the calendar owner's profile.
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          headers:
+            Cache-Control:
+              required: true
+              schema:
+                type: string
+                enum:
+                  - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnerProfile'
+      tags:
+        - Owner
 components:
   schemas:
     Health:
@@ -29,3 +51,29 @@ components:
             - UP
           description: The application is ready to accept requests.
       description: Application health response.
+    OwnerProfile:
+      type: object
+      required:
+        - name
+        - username
+        - timeZone
+        - bookingEnabled
+        - version
+        - bookingUrl
+      properties:
+        name:
+          type: string
+        username:
+          type: string
+        timeZone:
+          type: string
+        bookingEnabled:
+          type: boolean
+        version:
+          type: integer
+          format: int64
+          minimum: 1
+        bookingUrl:
+          type: string
+          description: Same-origin public booking page path.
+      description: The single calendar owner's current profile.

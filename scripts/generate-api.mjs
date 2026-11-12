@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
+import { cp, mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -7,11 +7,10 @@ import { createClient } from '@hey-api/openapi-ts';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const checking = process.argv.includes('--check');
-const temporary = checking
-  ? await mkdtemp(join(tmpdir(), 'calendar-api-'))
-  : undefined;
-const openapiDirectory = join(temporary ?? root, 'api/openapi');
-const clientDirectory = join(temporary ?? root, 'frontend/src/api/generated');
+const temporary = await mkdtemp(join(tmpdir(), 'calendar-api-'));
+const openapiDirectory = join(temporary, 'api/openapi');
+const clientDirectory = join(temporary, 'frontend/src/api/generated');
+const serverDirectory = join(temporary, 'api/server');
 
 async function files(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -63,10 +62,46 @@ try {
     output: clientDirectory,
     plugins: ['@hey-api/typescript', '@hey-api/client-fetch', '@hey-api/sdk'],
   });
+  const generatorClasspath = process.env.CALENDAR_GENERATOR_CLASSPATH;
+  const serverCommand = generatorClasspath ? 'java' : resolve(root, 'gradlew');
+  const serverArguments = generatorClasspath
+    ? [
+        '-cp',
+        generatorClasspath,
+        'org.openapitools.codegen.OpenAPIGenerator',
+        'generate',
+        '-g',
+        'spring',
+        '-i',
+        join(openapiDirectory, 'openapi.yaml'),
+        '-o',
+        serverDirectory,
+        '-c',
+        'api/server-generator.json',
+        '--global-property',
+        'apis,models,apiTests=false,modelTests=false,apiDocs=false,modelDocs=false',
+      ]
+    : [
+        '--no-daemon',
+        'generateServerContract',
+        `-PapiInput=${join(openapiDirectory, 'openapi.yaml')}`,
+        `-PapiOutput=${serverDirectory}`,
+      ];
+  execFileSync(serverCommand, serverArguments, { cwd: root, stdio: 'inherit' });
   if (checking) {
     await compare(openapiDirectory, join(root, 'api/openapi'));
     await compare(clientDirectory, join(root, 'frontend/src/api/generated'));
-    console.log('OpenAPI and generated client match TypeSpec.');
+    await compare(serverDirectory, join(root, 'api/server'));
+    console.log('OpenAPI, generated server contract and SDK match TypeSpec.');
+  } else {
+    for (const path of [
+      'api/openapi',
+      'api/server',
+      'frontend/src/api/generated',
+    ]) {
+      await rm(join(root, path), { recursive: true, force: true });
+      await cp(join(temporary, path), join(root, path), { recursive: true });
+    }
   }
 } catch (error) {
   console.error(error.message);
@@ -74,5 +109,5 @@ try {
     console.error('Run mise run api:generate and commit the outputs.');
   process.exitCode = 1;
 } finally {
-  if (temporary) await rm(temporary, { recursive: true, force: true });
+  await rm(temporary, { recursive: true, force: true });
 }

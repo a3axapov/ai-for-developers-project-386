@@ -1,0 +1,18 @@
+{
+  "apiPackage": "com.testproject.calendar.generated.api",
+  "modelPackage": "com.testproject.calendar.generated.model",
+  "interfaceOnly": true,
+  "requestMappingMode": "api_interface",
+  "skipDefaultInterface": true,
+  "useSpringBoot4": true,
+  "useJackson3": true,
+  "useTags": true,
+  "useBeanValidation": false,
+  "openApiNullable": false,
+  "annotationLibrary": "none",
+  "documentationProvider": "none",
+  "useSwaggerUI": false,
+  "hideGenerationTimestamp": true,
+  "generateJsonIncludeAnnotations": false,
+  "generateJsonSetterNullsAnnotations": false
+}

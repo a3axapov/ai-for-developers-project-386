@@ -1,3 +1,5 @@
+import { OwnerPage } from './OwnerPage';
+
 const steps = [
   {
     title: 'Выберите встречу',
@@ -107,21 +109,14 @@ function HomePage() {
   );
 }
 
-function PlaceholderPage({ owner = false }: { owner?: boolean }) {
+function PlaceholderPage() {
   return (
     <section className="placeholder" aria-labelledby="page-title">
-      <p className="eyebrow">
-        {owner ? 'Владельцу календаря' : 'Онлайн-запись'}
-      </p>
-      <h1 id="page-title">
-        {owner
-          ? 'Раздел владельца в разработке'
-          : 'Запись на встречи скоро появится'}
-      </h1>
+      <p className="eyebrow">Онлайн-запись</p>
+      <h1 id="page-title">Запись на встречи скоро появится</h1>
       <p className="lead">
-        {owner
-          ? 'Здесь появится управление расписанием, типами встреч и бронированиями.'
-          : 'Онлайн-запись пока недоступна. Мы готовим удобный выбор встречи и свободного времени.'}
+        Онлайн-запись пока недоступна. Мы готовим удобный выбор встречи и
+        свободного времени.
       </p>
       <a className="button" href="/">
         Вернуться на главную <span aria-hidden="true">↗</span>
@@ -161,7 +156,7 @@ export function App() {
         ) : path === '/booking' ? (
           <PlaceholderPage />
         ) : path === '/admin' ? (
-          <PlaceholderPage owner />
+          <OwnerPage />
         ) : (
           <section className="placeholder">
             <h1>Страница не найдена</h1>

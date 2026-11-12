@@ -28,7 +28,7 @@ description = "Install hk hooks locally (not in CI or Docker)"
 run = 'if [ -z "${CI:-}" ] && [ -e .git ]; then hk install; fi'
 
 [tasks."api:generate"]
-description = "Generate OpenAPI and the TypeScript client from TypeSpec"
+description = "Generate OpenAPI, Spring interfaces/models and the TypeScript SDK from TypeSpec"
 run = "npm run api:generate"
 
 [tasks."api:check"]
@@ -59,7 +59,7 @@ description = "Install Chromium and its system dependencies for Playwright"
 run = "npm exec --workspace frontend -- playwright install --with-deps chromium"
 
 [tasks."test:browser"]
-description = "Build the frontend and test guest and owner navigation in Chromium"
+description = "Build the application and test navigation and owner profiles against real Spring Boot servers"
 run = "npm run test:e2e --workspace frontend"
 
 [tasks.build]
@@ -73,7 +73,7 @@ run = [
   "mise run lint",
   "mise run typecheck",
   "mise run test",
-  "npm run build --workspace frontend",
+  "mise run test:browser",
 ]
 
 [tasks.dev]

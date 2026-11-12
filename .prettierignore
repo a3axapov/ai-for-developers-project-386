@@ -2,11 +2,13 @@ node_modules/
 build/
 .gradle/
 .agents/
+.opencode/
 frontend/dist/
 frontend/test-results/
 frontend/playwright-report/
 frontend/src/api/generated/
 api/openapi/
+api/server/
 package-lock.json
 gradlew
 gradlew.bat

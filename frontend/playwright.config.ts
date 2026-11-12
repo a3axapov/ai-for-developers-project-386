@@ -11,19 +11,39 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   projects: [
-    { name: 'desktop', use: { ...devices['Desktop Chrome'] } },
+    {
+      name: 'desktop',
+      testIgnore: 'configured-owner.spec.ts',
+      use: { ...devices['Desktop Chrome'] },
+    },
     {
       name: 'mobile',
+      testIgnore: 'configured-owner.spec.ts',
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 320, height: 720 },
       },
     },
+    {
+      name: 'configured-owner',
+      testMatch: 'configured-owner.spec.ts',
+      use: { ...devices['Desktop Chrome'], baseURL: 'http://127.0.0.1:4174' },
+    },
   ],
-  webServer: {
-    command:
-      'npm exec -- vite preview --host 127.0.0.1 --port 4173 --strictPort',
-    url: 'http://127.0.0.1:4173',
-    reuseExistingServer: false,
-  },
+  webServer: [
+    {
+      command:
+        'java -jar ../build/libs/calendar.jar --server.address=127.0.0.1 --server.port=4173',
+      url: 'http://127.0.0.1:4173/api/health',
+      reuseExistingServer: false,
+      gracefulShutdown: { signal: 'SIGTERM', timeout: 10_000 },
+    },
+    {
+      command:
+        'java -jar ../build/libs/calendar.jar --server.address=127.0.0.1 --server.port=4174 --spring.config.additional-location=file:tests/fixtures/owner.yaml',
+      url: 'http://127.0.0.1:4174/api/health',
+      reuseExistingServer: false,
+      gracefulShutdown: { signal: 'SIGTERM', timeout: 10_000 },
+    },
+  ],
 });

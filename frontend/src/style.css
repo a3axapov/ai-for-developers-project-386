@@ -274,6 +274,22 @@ h3 {
   padding-block: 5rem;
 }
 
+.profile-details {
+  display: grid;
+  gap: 1rem;
+  margin-block: 2rem;
+  overflow-wrap: anywhere;
+}
+
+.profile-details dt {
+  color: #6a6576;
+}
+
+.profile-details dd {
+  margin: 0.25rem 0 0;
+  font-size: 1.2rem;
+}
+
 .skip-link {
   position: absolute;
   top: 1rem;

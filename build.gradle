@@ -18,7 +18,12 @@ repositories {
 	mavenCentral()
 }
 
+configurations {
+	openApiGenerator
+}
+
 dependencies {
+	openApiGenerator('org.openapitools:openapi-generator-cli:7.27.0') { transitive = false }
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
 	testImplementation 'org.springframework.boot:spring-boot-starter-actuator-test'
@@ -26,9 +31,26 @@ dependencies {
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
+sourceSets.main.java.srcDir('api/server/src/main/java')
+
+tasks.register('generateServerContract', JavaExec) {
+	description = 'Generate Spring interfaces and transport models from OpenAPI'
+	classpath = configurations.openApiGenerator
+	mainClass = 'org.openapitools.codegen.OpenAPIGenerator'
+	args 'generate', '-g', 'spring',
+		'-i', providers.gradleProperty('apiInput').getOrElse('api/openapi/openapi.yaml'),
+		'-o', providers.gradleProperty('apiOutput').getOrElse('api/server'),
+		'-c', 'api/server-generator.json',
+		'--global-property', 'apis,models,apiTests=false,modelTests=false,apiDocs=false,modelDocs=false'
+}
+
 checkstyle {
 	toolVersion = '14.4.0'
 	maxWarnings = 0
+}
+
+tasks.named('checkstyleMain') {
+	exclude 'com/testproject/calendar/generated/**'
 }
 
 dependencyLocking {
@@ -44,6 +66,10 @@ tasks.register('frontendBuild', Exec) {
 	description = 'Generate the API client and build the frontend'
 	workingDir = projectDir
 	commandLine 'npm', 'run', 'build'
+	doFirst {
+		// The Node codegen driver uses this JVM classpath instead of nesting Gradle inside Gradle.
+		environment 'CALENDAR_GENERATOR_CLASSPATH', configurations.openApiGenerator.asPath
+	}
 	inputs.files('package.json', 'package-lock.json')
 	inputs.dir('api')
 	inputs.dir('scripts')
@@ -52,6 +78,10 @@ tasks.register('frontendBuild', Exec) {
 	})
 	outputs.dir('frontend/dist')
 	onlyIf { !project.hasProperty('frontendPrebuilt') }
+}
+
+tasks.named('compileJava') {
+	mustRunAfter tasks.named('frontendBuild')
 }
 
 tasks.named('bootJar') {
