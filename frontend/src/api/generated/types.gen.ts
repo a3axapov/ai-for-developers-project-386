@@ -32,6 +32,11 @@ export type Health = {
 };
 
 /**
+ * Transport-safe operation key: 1 to 128 ASCII letters, digits, underscores or hyphens.
+ */
+export type IdempotencyKey = string;
+
+/**
  * The saved, definite result of an owner command. Exactly one of profile or error is present.
  */
 export type OwnerOperationResult = {
@@ -89,7 +94,7 @@ export type GetHealthResponse = GetHealthResponses[keyof GetHealthResponses];
 export type GetOwnerOperationData = {
     body?: never;
     path: {
-        key: string;
+        key: IdempotencyKey;
     };
     query?: never;
     url: '/api/owner/operations/{key}';
@@ -132,7 +137,7 @@ export type GetOwnerProfileResponse = GetOwnerProfileResponses[keyof GetOwnerPro
 export type SetPublicBookingData = {
     body: PublicBookingCommand;
     headers: {
-        'Idempotency-Key': string;
+        'Idempotency-Key': IdempotencyKey;
     };
     path?: never;
     query?: never;
@@ -169,7 +174,7 @@ export type GetBookingEntryData = {
     body?: never;
     path?: never;
     query?: never;
-    url: '/api/public/booking-entry';
+    url: '/api/public/booking-entry/current';
 };
 
 export type GetBookingEntryResponses = {

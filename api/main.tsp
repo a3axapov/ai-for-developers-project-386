@@ -93,7 +93,7 @@ model PageNotFound {
 }
 
 @get
-@route("/public/booking-entry")
+@route("/public/booking-entry/current")
 @tag("Public")
 @operationId("getBookingEntry")
 @doc("Find the current general booking page, including when booking is disabled.")
@@ -128,15 +128,20 @@ model PublicBookingCommand {
   @minValue(1) expectedVersion: int64;
 }
 
+@doc("Transport-safe operation key: 1 to 128 ASCII letters, digits, underscores or hyphens.")
+@minLength(1)
+@maxLength(128)
+@pattern("^[A-Za-z0-9_-]+$")
+scalar IdempotencyKey extends string;
+
 @put
 @route("/owner/public-booking")
 @tag("Owner")
 @operationId("setPublicBooking")
-@doc("Explicitly enable or disable public booking, using the shown profile version.")
+@doc("Explicitly enable or disable public booking, using the shown profile version. An invalid Idempotency-Key returns 400 MALFORMED_REQUEST without changing state or saving an outcome.")
 op setPublicBooking(
-  @minLength(1)
   @header("Idempotency-Key")
-  idempotencyKey: string,
+  idempotencyKey: IdempotencyKey,
 
   @body command: PublicBookingCommand,
 ):
@@ -160,7 +165,7 @@ model OwnerOperationResult {
 @tag("Owner")
 @operationId("getOwnerOperation")
 @doc("Recover the saved result without executing the command again.")
-op getOwnerOperation(@path key: string):
+op getOwnerOperation(@path key: IdempotencyKey):
   | {
       @header("Cache-Control") cacheControl: "no-store";
       @body body: OwnerOperationResult;

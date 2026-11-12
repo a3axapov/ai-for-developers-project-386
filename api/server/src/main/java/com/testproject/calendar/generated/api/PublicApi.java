@@ -23,9 +23,9 @@ import jakarta.annotation.Generated;
 @RequestMapping("${openapi.calendar.base-path:}")
 public interface PublicApi {
 
-    String PATH_GET_BOOKING_ENTRY = "/api/public/booking-entry";
+    String PATH_GET_BOOKING_ENTRY = "/api/public/booking-entry/current";
     /**
-     * GET /api/public/booking-entry
+     * GET /api/public/booking-entry/current
      * Find the current general booking page, including when booking is disabled.
      *
      * @return The request has succeeded. (status code 200)

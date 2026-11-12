@@ -63,7 +63,7 @@ public interface OwnerApi {
     String PATH_SET_PUBLIC_BOOKING = "/api/owner/public-booking";
     /**
      * PUT /api/owner/public-booking
-     * Explicitly enable or disable public booking, using the shown profile version.
+     * Explicitly enable or disable public booking, using the shown profile version. An invalid Idempotency-Key returns 400 MALFORMED_REQUEST without changing state or saving an outcome.
      *
      * @param idempotencyKey  (required)
      * @param publicBookingCommand  (required)

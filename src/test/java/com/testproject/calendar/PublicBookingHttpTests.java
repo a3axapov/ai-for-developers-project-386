@@ -23,10 +23,21 @@ class PublicBookingHttpTests {
     private JsonMapper json;
 
     @Test
-    void bookingEntryUsesCurrentConfiguredUsername() throws Exception {
+    void unknownBookingEntryUsernameIsNotTheTechnicalEntry() throws Exception {
         try (var client = HttpClient.newHttpClient()) {
             var response = client.send(HttpRequest.newBuilder(URI.create(
                     "http://127.0.0.1:" + port + "/api/public/booking-entry")).GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+            assertEquals(404, response.statusCode());
+            assertEquals("PAGE_NOT_FOUND", json.readTree(response.body()).get("code").asString());
+        }
+    }
+
+    @Test
+    void bookingEntryUsesCurrentConfiguredUsername() throws Exception {
+        try (var client = HttpClient.newHttpClient()) {
+            var response = client.send(HttpRequest.newBuilder(URI.create(
+                    "http://127.0.0.1:" + port + "/api/public/booking-entry/current")).GET().build(),
                     HttpResponse.BodyHandlers.ofString());
             assertEquals(200, response.statusCode());
             assertEquals(json.readTree("{\"bookingUrl\":\"/booking/anna-1\"}"), json.readTree(response.body()));

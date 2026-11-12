@@ -34,7 +34,7 @@ export const getOwnerOperation = <ThrowOnError extends boolean = false>(options:
 export const getOwnerProfile = <ThrowOnError extends boolean = false>(options?: Options<GetOwnerProfileData, ThrowOnError>): RequestResult<GetOwnerProfileResponses, unknown, ThrowOnError> => (options?.client ?? client).get<GetOwnerProfileResponses, unknown, ThrowOnError>({ url: '/api/owner/profile', ...options });
 
 /**
- * Explicitly enable or disable public booking, using the shown profile version.
+ * Explicitly enable or disable public booking, using the shown profile version. An invalid Idempotency-Key returns 400 MALFORMED_REQUEST without changing state or saving an outcome.
  */
 export const setPublicBooking = <ThrowOnError extends boolean = false>(options: Options<SetPublicBookingData, ThrowOnError>): RequestResult<SetPublicBookingResponses, SetPublicBookingErrors, ThrowOnError> => (options.client ?? client).put<SetPublicBookingResponses, SetPublicBookingErrors, ThrowOnError>({
     url: '/api/owner/public-booking',
@@ -48,7 +48,7 @@ export const setPublicBooking = <ThrowOnError extends boolean = false>(options: 
 /**
  * Find the current general booking page, including when booking is disabled.
  */
-export const getBookingEntry = <ThrowOnError extends boolean = false>(options?: Options<GetBookingEntryData, ThrowOnError>): RequestResult<GetBookingEntryResponses, unknown, ThrowOnError> => (options?.client ?? client).get<GetBookingEntryResponses, unknown, ThrowOnError>({ url: '/api/public/booking-entry', ...options });
+export const getBookingEntry = <ThrowOnError extends boolean = false>(options?: Options<GetBookingEntryData, ThrowOnError>): RequestResult<GetBookingEntryResponses, unknown, ThrowOnError> => (options?.client ?? client).get<GetBookingEntryResponses, unknown, ThrowOnError>({ url: '/api/public/booking-entry/current', ...options });
 
 /**
  * Read the general public booking page.

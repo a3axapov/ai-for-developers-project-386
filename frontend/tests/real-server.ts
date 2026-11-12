@@ -3,14 +3,16 @@ import { once } from 'node:events';
 import { expect, test as base } from '@playwright/test';
 
 // Each mutable scenario gets its own real application state; the read-only suite uses 4173.
-export const test = base.extend({
-  baseURL: async ({ playwright }, use) => {
+export const test = base.extend<{ ownerUsername: string }>({
+  ownerUsername: ['anna-1', { option: true }],
+  baseURL: async ({ playwright, ownerUsername }, use) => {
     const server = spawn('java', [
       '-jar',
       '../build/libs/calendar.jar',
       '--server.address=127.0.0.1',
       '--server.port=4174',
       '--spring.config.additional-location=file:tests/fixtures/owner.yaml',
+      `--calendar.initial.username=${ownerUsername}`,
     ]);
     let output = '';
     server.stdout.on('data', (chunk: Buffer) => {

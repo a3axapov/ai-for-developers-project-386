@@ -32,8 +32,8 @@ public class OwnerState {
     }
 
     public synchronized OwnerProfile setPublicBooking(String key, PublicBookingCommand command) {
-        if (key == null || key.isBlank()) {
-            throw new ApiFailure(400, new ApiError("MALFORMED_REQUEST", "Укажите непустой Idempotency-Key."));
+        if (!validKey(key)) {
+            throw invalidKey();
         }
         var saved = operations.get(key);
         if (saved != null) {
@@ -87,8 +87,8 @@ public class OwnerState {
 
     public synchronized ApiFailure malformedResult(String key, String body) {
         var malformed = new ApiFailure(400, new ApiError("MALFORMED_REQUEST", "Некорректный формат запроса."));
-        if (key == null || key.isBlank()) {
-            return malformed;
+        if (!validKey(key)) {
+            return invalidKey();
         }
         var saved = operations.get(key);
         if (saved != null) {
@@ -100,5 +100,13 @@ public class OwnerState {
         }
         operations.put(key, new SavedCommand(body, null, malformed));
         return malformed;
+    }
+
+    private boolean validKey(String key) {
+        return key != null && key.matches("[A-Za-z0-9_-]{1,128}");
+    }
+
+    private ApiFailure invalidKey() {
+        return new ApiFailure(400, new ApiError("MALFORMED_REQUEST", "Некорректный Idempotency-Key."));
     }
 }

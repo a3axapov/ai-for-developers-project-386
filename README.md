@@ -213,7 +213,7 @@ OpenAPI Generator 7.27.0 (`spring`, интерфейсы для Spring Boot 4/Ja
 хранятся только в памяти до сброса. Для разобранных команд сравниваются значения
 полей, для неразбираемого тела — исходный текст.
 
-`GET /api/public/booking-entry` возвращает текущий `bookingUrl`,
+`GET /api/public/booking-entry/current` возвращает текущий `bookingUrl`,
 `GET /api/public/{username}` — `ownerName`, `ownerTimeZone` и `state`:
 `BOOKING_DISABLED` без списка либо `OPEN` с пустым `items`. Неизвестный username
 даёт `404 PAGE_NOT_FOUND`. Все эти ответы используют `Cache-Control: no-store`.

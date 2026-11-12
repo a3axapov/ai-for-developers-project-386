@@ -187,6 +187,38 @@ class PublicBookingCommandHttpTests {
     }
 
     @ParameterizedTest
+    @ValueSource(strings = {"a", "A0_-"})
+    void transportSafeBoundaryKeysRecoverSavedOutcomes(String key) throws Exception {
+        if (key.equals("A0_-")) {
+            key = key.repeat(32);
+        }
+        var result = put(key, "{\"enabled\":true,\"expectedVersion\":1}");
+        assertEquals(200, result.statusCode());
+        var lookup = get("/api/owner/operations/" + key);
+        assertEquals(200, lookup.statusCode());
+        assertEquals(200, json.readTree(lookup.body()).get("statusCode").asInt());
+        assertEquals(json.readTree(result.body()), json.readTree(lookup.body()).get("profile"));
+        assertEquals(json.readTree(result.body()), json.readTree(get("/api/owner/profile").body()));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"review/key", "key.with.dot", "key space", "a"})
+    void incompatibleKeyCannotChangeStateOrSaveOutcome(String key) throws Exception {
+        if (key.equals("a")) {
+            key = "a".repeat(129);
+        }
+        var initial = get("/api/owner/profile");
+        var failed = put(key, "{\"enabled\":true,\"expectedVersion\":1}");
+        assertEquals(400, failed.statusCode());
+        assertEquals("MALFORMED_REQUEST", json.readTree(failed.body()).get("code").asString());
+        assertEquals(json.readTree(initial.body()), json.readTree(get("/api/owner/profile").body()));
+        var malformed = put(key, "{");
+        assertEquals(400, malformed.statusCode());
+        assertEquals("MALFORMED_REQUEST", json.readTree(malformed.body()).get("code").asString());
+        assertEquals(json.readTree(initial.body()), json.readTree(get("/api/owner/profile").body()));
+    }
+
+    @ParameterizedTest
     @NullAndEmptySource
     @ValueSource(strings = "   ")
     void idempotencyKeyIsRequiredAndMustNotBeBlank(String key) throws Exception {

@@ -163,6 +163,20 @@ test('явно введённый неизвестный адрес не пер�
   }
 });
 
+test('неизвестный booking-entry не совпадает с техническим входом', async ({
+  page,
+}) => {
+  const response = page.waitForResponse((result) =>
+    result.url().endsWith('/api/public/booking-entry'),
+  );
+  await page.goto('/booking/booking-entry');
+  expect((await response).status()).toBe(404);
+  await expect(
+    page.getByRole('heading', { name: 'Страница не найдена' }),
+  ).toBeVisible();
+  await expect(page).toHaveURL('/booking/booking-entry');
+});
+
 test('потерянный ответ отказа восстанавливает отказ, а не успех', async ({
   page,
   request,
