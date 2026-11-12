@@ -29,11 +29,13 @@ test('главная объясняет будущую запись без ре�
 for (const destination of [
   {
     path: '/booking',
+    resolvedPath: '/booking/owner',
     link: 'Записаться на встречу',
-    title: 'Запись на встречи скоро появится',
+    title: 'Владелец календаря',
   },
   {
     path: '/admin',
+    resolvedPath: '/admin',
     link: 'Владельцу',
     title: 'Профиль владельца',
   },
@@ -45,7 +47,7 @@ for (const destination of [
     await page
       .getByRole('link', { name: destination.link, exact: true })
       .click();
-    await expect(page).toHaveURL(destination.path);
+    await expect(page).toHaveURL(destination.resolvedPath);
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(
       destination.title,
     );
@@ -71,6 +73,16 @@ for (const destination of [
 for (const path of ['/', '/booking', '/admin']) {
   test(`нет горизонтальной прокрутки на ${path}`, async ({ page }) => {
     await page.goto(path);
+    if (path === '/booking') {
+      await expect(page).toHaveURL('/booking/owner');
+      await expect(
+        page.getByRole('heading', { name: 'Владелец календаря' }),
+      ).toBeVisible();
+    } else if (path === '/admin') {
+      await expect(
+        page.getByRole('switch', { name: 'Публичная запись' }),
+      ).toBeVisible();
+    }
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= window.innerWidth,
@@ -92,5 +104,5 @@ test('основные переходы доступны с клавиатуры
     page.getByRole('link', { name: 'Записаться на встречу' }),
   ).toBeFocused();
   await page.keyboard.press('Enter');
-  await expect(page).toHaveURL('/booking');
+  await expect(page).toHaveURL('/booking/owner');
 });

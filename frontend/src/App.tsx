@@ -1,4 +1,5 @@
 import { OwnerPage } from './OwnerPage';
+import { BookingPage } from './BookingPage';
 
 const steps = [
   {
@@ -109,24 +110,9 @@ function HomePage() {
   );
 }
 
-function PlaceholderPage() {
-  return (
-    <section className="placeholder" aria-labelledby="page-title">
-      <p className="eyebrow">Онлайн-запись</p>
-      <h1 id="page-title">Запись на встречи скоро появится</h1>
-      <p className="lead">
-        Онлайн-запись пока недоступна. Мы готовим удобный выбор встречи и
-        свободного времени.
-      </p>
-      <a className="button" href="/">
-        Вернуться на главную <span aria-hidden="true">↗</span>
-      </a>
-    </section>
-  );
-}
-
 export function App() {
   const path = window.location.pathname;
+  const bookingPath = /^\/booking\/([^/]+)$/.exec(path);
 
   return (
     <div className="site-shell">
@@ -154,7 +140,9 @@ export function App() {
         {path === '/' ? (
           <HomePage />
         ) : path === '/booking' ? (
-          <PlaceholderPage />
+          <BookingPage />
+        ) : bookingPath ? (
+          <BookingPage username={decodeURIComponent(bookingPath[1])} />
         ) : path === '/admin' ? (
           <OwnerPage />
         ) : (

@@ -4,6 +4,23 @@ export type ClientOptions = {
     baseUrl: `${string}://${string}` | (string & {});
 };
 
+export type ApiError = {
+    code: string;
+    message: string;
+    currentProfile?: OwnerProfile;
+    fieldErrors?: Array<FieldError>;
+};
+
+export type BookingEntry = {
+    bookingUrl: string;
+};
+
+export type FieldError = {
+    field: string;
+    code: string;
+    message: string;
+};
+
 /**
  * Application health response.
  */
@@ -12,6 +29,15 @@ export type Health = {
      * The application is ready to accept requests.
      */
     status: 'UP';
+};
+
+/**
+ * The saved, definite result of an owner command. Exactly one of profile or error is present.
+ */
+export type OwnerOperationResult = {
+    statusCode: number;
+    profile?: OwnerProfile;
+    error?: ApiError;
 };
 
 /**
@@ -27,6 +53,21 @@ export type OwnerProfile = {
      * Same-origin public booking page path.
      */
     bookingUrl: string;
+};
+
+export type PublicBookingCommand = {
+    enabled: boolean;
+    expectedVersion: number;
+};
+
+export type PublicBookingPage = {
+    ownerName: string;
+    ownerTimeZone: string;
+    state: 'BOOKING_DISABLED' | 'OPEN';
+    /**
+     * Present only when OPEN. No meeting types exist in this slice.
+     */
+    items?: Array<unknown>;
 };
 
 export type GetHealthData = {
@@ -45,6 +86,33 @@ export type GetHealthResponses = {
 
 export type GetHealthResponse = GetHealthResponses[keyof GetHealthResponses];
 
+export type GetOwnerOperationData = {
+    body?: never;
+    path: {
+        key: string;
+    };
+    query?: never;
+    url: '/api/owner/operations/{key}';
+};
+
+export type GetOwnerOperationErrors = {
+    /**
+     * Client error
+     */
+    410: ApiError;
+};
+
+export type GetOwnerOperationError = GetOwnerOperationErrors[keyof GetOwnerOperationErrors];
+
+export type GetOwnerOperationResponses = {
+    /**
+     * The request has succeeded.
+     */
+    200: OwnerOperationResult;
+};
+
+export type GetOwnerOperationResponse = GetOwnerOperationResponses[keyof GetOwnerOperationResponses];
+
 export type GetOwnerProfileData = {
     body?: never;
     path?: never;
@@ -60,3 +128,82 @@ export type GetOwnerProfileResponses = {
 };
 
 export type GetOwnerProfileResponse = GetOwnerProfileResponses[keyof GetOwnerProfileResponses];
+
+export type SetPublicBookingData = {
+    body: PublicBookingCommand;
+    headers: {
+        'Idempotency-Key': string;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/owner/public-booking';
+};
+
+export type SetPublicBookingErrors = {
+    /**
+     * The server could not understand the request due to invalid syntax.
+     */
+    400: ApiError;
+    /**
+     * The request conflicts with the current state of the server.
+     */
+    409: ApiError;
+    /**
+     * Client error
+     */
+    422: ApiError;
+};
+
+export type SetPublicBookingError = SetPublicBookingErrors[keyof SetPublicBookingErrors];
+
+export type SetPublicBookingResponses = {
+    /**
+     * The request has succeeded.
+     */
+    200: OwnerProfile;
+};
+
+export type SetPublicBookingResponse = SetPublicBookingResponses[keyof SetPublicBookingResponses];
+
+export type GetBookingEntryData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/public/booking-entry';
+};
+
+export type GetBookingEntryResponses = {
+    /**
+     * The request has succeeded.
+     */
+    200: BookingEntry;
+};
+
+export type GetBookingEntryResponse = GetBookingEntryResponses[keyof GetBookingEntryResponses];
+
+export type GetPublicBookingPageData = {
+    body?: never;
+    path: {
+        username: string;
+    };
+    query?: never;
+    url: '/api/public/{username}';
+};
+
+export type GetPublicBookingPageErrors = {
+    /**
+     * The server cannot find the requested resource.
+     */
+    404: ApiError;
+};
+
+export type GetPublicBookingPageError = GetPublicBookingPageErrors[keyof GetPublicBookingPageErrors];
+
+export type GetPublicBookingPageResponses = {
+    /**
+     * The request has succeeded.
+     */
+    200: PublicBookingPage;
+};
+
+export type GetPublicBookingPageResponse = GetPublicBookingPageResponses[keyof GetPublicBookingPageResponses];

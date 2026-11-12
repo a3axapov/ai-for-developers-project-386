@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { GetHealthData, GetHealthResponses, GetOwnerProfileData, GetOwnerProfileResponses } from './types.gen';
+import type { GetBookingEntryData, GetBookingEntryResponses, GetHealthData, GetHealthResponses, GetOwnerOperationData, GetOwnerOperationErrors, GetOwnerOperationResponses, GetOwnerProfileData, GetOwnerProfileResponses, GetPublicBookingPageData, GetPublicBookingPageErrors, GetPublicBookingPageResponses, SetPublicBookingData, SetPublicBookingErrors, SetPublicBookingResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -24,6 +24,33 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
 export const getHealth = <ThrowOnError extends boolean = false>(options?: Options<GetHealthData, ThrowOnError>): RequestResult<GetHealthResponses, unknown, ThrowOnError> => (options?.client ?? client).get<GetHealthResponses, unknown, ThrowOnError>({ url: '/api/health', ...options });
 
 /**
+ * Recover the saved result without executing the command again.
+ */
+export const getOwnerOperation = <ThrowOnError extends boolean = false>(options: Options<GetOwnerOperationData, ThrowOnError>): RequestResult<GetOwnerOperationResponses, GetOwnerOperationErrors, ThrowOnError> => (options.client ?? client).get<GetOwnerOperationResponses, GetOwnerOperationErrors, ThrowOnError>({ url: '/api/owner/operations/{key}', ...options });
+
+/**
  * Read the calendar owner's profile.
  */
 export const getOwnerProfile = <ThrowOnError extends boolean = false>(options?: Options<GetOwnerProfileData, ThrowOnError>): RequestResult<GetOwnerProfileResponses, unknown, ThrowOnError> => (options?.client ?? client).get<GetOwnerProfileResponses, unknown, ThrowOnError>({ url: '/api/owner/profile', ...options });
+
+/**
+ * Explicitly enable or disable public booking, using the shown profile version.
+ */
+export const setPublicBooking = <ThrowOnError extends boolean = false>(options: Options<SetPublicBookingData, ThrowOnError>): RequestResult<SetPublicBookingResponses, SetPublicBookingErrors, ThrowOnError> => (options.client ?? client).put<SetPublicBookingResponses, SetPublicBookingErrors, ThrowOnError>({
+    url: '/api/owner/public-booking',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Find the current general booking page, including when booking is disabled.
+ */
+export const getBookingEntry = <ThrowOnError extends boolean = false>(options?: Options<GetBookingEntryData, ThrowOnError>): RequestResult<GetBookingEntryResponses, unknown, ThrowOnError> => (options?.client ?? client).get<GetBookingEntryResponses, unknown, ThrowOnError>({ url: '/api/public/booking-entry', ...options });
+
+/**
+ * Read the general public booking page.
+ */
+export const getPublicBookingPage = <ThrowOnError extends boolean = false>(options: Options<GetPublicBookingPageData, ThrowOnError>): RequestResult<GetPublicBookingPageResponses, GetPublicBookingPageErrors, ThrowOnError> => (options.client ?? client).get<GetPublicBookingPageResponses, GetPublicBookingPageErrors, ThrowOnError>({ url: '/api/public/{username}', ...options });

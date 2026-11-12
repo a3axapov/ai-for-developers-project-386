@@ -5,7 +5,10 @@
  */
 package com.testproject.calendar.generated.api;
 
+import com.testproject.calendar.generated.model.ApiError;
+import com.testproject.calendar.generated.model.OwnerOperationResult;
 import com.testproject.calendar.generated.model.OwnerProfile;
+import com.testproject.calendar.generated.model.PublicBookingCommand;
 import org.springframework.http.ResponseEntity;
 
 import org.springframework.web.bind.annotation.*;
@@ -21,6 +24,25 @@ import jakarta.annotation.Generated;
 @RequestMapping("${openapi.calendar.base-path:}")
 public interface OwnerApi {
 
+    String PATH_GET_OWNER_OPERATION = "/api/owner/operations/{key}";
+    /**
+     * GET /api/owner/operations/{key}
+     * Recover the saved result without executing the command again.
+     *
+     * @param key  (required)
+     * @return The request has succeeded. (status code 200)
+     *         or Client error (status code 410)
+     */
+    @RequestMapping(
+        method = RequestMethod.GET,
+        value = OwnerApi.PATH_GET_OWNER_OPERATION,
+        produces = { "application/json" }
+    )
+    ResponseEntity<OwnerOperationResult> getOwnerOperation(
+         @PathVariable("key") String key
+    );
+
+
     String PATH_GET_OWNER_PROFILE = "/api/owner/profile";
     /**
      * GET /api/owner/profile
@@ -35,6 +57,30 @@ public interface OwnerApi {
     )
     ResponseEntity<OwnerProfile> getOwnerProfile(
         
+    );
+
+
+    String PATH_SET_PUBLIC_BOOKING = "/api/owner/public-booking";
+    /**
+     * PUT /api/owner/public-booking
+     * Explicitly enable or disable public booking, using the shown profile version.
+     *
+     * @param idempotencyKey  (required)
+     * @param publicBookingCommand  (required)
+     * @return The request has succeeded. (status code 200)
+     *         or The server could not understand the request due to invalid syntax. (status code 400)
+     *         or The request conflicts with the current state of the server. (status code 409)
+     *         or Client error (status code 422)
+     */
+    @RequestMapping(
+        method = RequestMethod.PUT,
+        value = OwnerApi.PATH_SET_PUBLIC_BOOKING,
+        produces = { "application/json" },
+        consumes = { "application/json" }
+    )
+    ResponseEntity<OwnerProfile> setPublicBooking(
+         @RequestHeader(value = "Idempotency-Key", required = true) String idempotencyKey,
+         @RequestBody PublicBookingCommand publicBookingCommand
     );
 
 }

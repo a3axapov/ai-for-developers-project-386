@@ -18,6 +18,7 @@
   "useTags": true,
   "useBeanValidation": false,
   "openApiNullable": false,
+  "containerDefaultToNull": true,
   "annotationLibrary": "none",
   "documentationProvider": "none",
   "useSwaggerUI": false,

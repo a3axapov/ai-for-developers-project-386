@@ -4,6 +4,7 @@ info:
   version: 0.0.0
 tags:
   - name: Owner
+  - name: Public
 paths:
   /api/health:
     get:
@@ -17,6 +18,38 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Health'
+  /api/owner/operations/{key}:
+    get:
+      operationId: getOwnerOperation
+      description: Recover the saved result without executing the command again.
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          headers:
+            Cache-Control:
+              required: true
+              schema:
+                type: string
+                enum:
+                  - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnerOperationResult'
+        '410':
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      tags:
+        - Owner
   /api/owner/profile:
     get:
       operationId: getOwnerProfile
@@ -38,8 +71,148 @@ paths:
                 $ref: '#/components/schemas/OwnerProfile'
       tags:
         - Owner
+  /api/owner/public-booking:
+    put:
+      operationId: setPublicBooking
+      description: Explicitly enable or disable public booking, using the shown profile version.
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        '200':
+          description: The request has succeeded.
+          headers:
+            Cache-Control:
+              required: true
+              schema:
+                type: string
+                enum:
+                  - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnerProfile'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: The request conflicts with the current state of the server.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      tags:
+        - Owner
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublicBookingCommand'
+  /api/public/booking-entry:
+    get:
+      operationId: getBookingEntry
+      description: Find the current general booking page, including when booking is disabled.
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          headers:
+            Cache-Control:
+              required: true
+              schema:
+                type: string
+                enum:
+                  - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingEntry'
+      tags:
+        - Public
+  /api/public/{username}:
+    get:
+      operationId: getPublicBookingPage
+      description: Read the general public booking page.
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          headers:
+            Cache-Control:
+              required: true
+              schema:
+                type: string
+                enum:
+                  - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicBookingPage'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      tags:
+        - Public
 components:
   schemas:
+    ApiError:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        currentProfile:
+          $ref: '#/components/schemas/OwnerProfile'
+        fieldErrors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+    BookingEntry:
+      type: object
+      required:
+        - bookingUrl
+      properties:
+        bookingUrl:
+          type: string
+    FieldError:
+      type: object
+      required:
+        - field
+        - code
+        - message
+      properties:
+        field:
+          type: string
+        code:
+          type: string
+        message:
+          type: string
     Health:
       type: object
       required:
@@ -51,6 +224,19 @@ components:
             - UP
           description: The application is ready to accept requests.
       description: Application health response.
+    OwnerOperationResult:
+      type: object
+      required:
+        - statusCode
+      properties:
+        statusCode:
+          type: integer
+          format: int32
+        profile:
+          $ref: '#/components/schemas/OwnerProfile'
+        error:
+          $ref: '#/components/schemas/ApiError'
+      description: The saved, definite result of an owner command. Exactly one of profile or error is present.
     OwnerProfile:
       type: object
       required:
@@ -77,3 +263,37 @@ components:
           type: string
           description: Same-origin public booking page path.
       description: The single calendar owner's current profile.
+    PublicBookingCommand:
+      type: object
+      required:
+        - enabled
+        - expectedVersion
+      properties:
+        enabled:
+          type: boolean
+        expectedVersion:
+          type: integer
+          format: int64
+          minimum: 1
+    PublicBookingPage:
+      type: object
+      required:
+        - ownerName
+        - ownerTimeZone
+        - state
+      properties:
+        ownerName:
+          type: string
+        ownerTimeZone:
+          type: string
+        state:
+          type: string
+          enum:
+            - BOOKING_DISABLED
+            - OPEN
+        items:
+          type: array
+          items: {}
+          minItems: 0
+          maxItems: 0
+          description: Present only when OPEN. No meeting types exist in this slice.

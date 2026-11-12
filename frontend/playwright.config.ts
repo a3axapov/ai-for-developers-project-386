@@ -3,6 +3,7 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './tests',
   fullyParallel: true,
+  workers: 1,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,
   reporter: 'list',
@@ -35,13 +36,6 @@ export default defineConfig({
       command:
         'java -jar ../build/libs/calendar.jar --server.address=127.0.0.1 --server.port=4173',
       url: 'http://127.0.0.1:4173/api/health',
-      reuseExistingServer: false,
-      gracefulShutdown: { signal: 'SIGTERM', timeout: 10_000 },
-    },
-    {
-      command:
-        'java -jar ../build/libs/calendar.jar --server.address=127.0.0.1 --server.port=4174 --spring.config.additional-location=file:tests/fixtures/owner.yaml',
-      url: 'http://127.0.0.1:4174/api/health',
       reuseExistingServer: false,
       gracefulShutdown: { signal: 'SIGTERM', timeout: 10_000 },
     },

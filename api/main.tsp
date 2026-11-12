@@ -44,3 +44,125 @@ op getOwnerProfile(): {
   @header("Cache-Control") cacheControl: "no-store";
   @body body: OwnerProfile;
 };
+
+model BookingEntry {
+  bookingUrl: string;
+}
+
+model ApiError {
+  code: string;
+  message: string;
+  currentProfile?: OwnerProfile;
+  fieldErrors?: FieldError[];
+}
+
+model FieldError {
+  field: string;
+  code: string;
+  message: string;
+}
+
+@error
+model InvalidData {
+  @statusCode statusCode: 422;
+  @body body: ApiError;
+}
+
+@error
+model MalformedRequest {
+  @statusCode statusCode: 400;
+  @body body: ApiError;
+}
+
+@error
+model StateConflict {
+  @statusCode statusCode: 409;
+  @body body: ApiError;
+}
+
+@error
+model OperationUnavailable {
+  @statusCode statusCode: 410;
+  @body body: ApiError;
+}
+
+@error
+model PageNotFound {
+  @statusCode statusCode: 404;
+  @body body: ApiError;
+}
+
+@get
+@route("/public/booking-entry")
+@tag("Public")
+@operationId("getBookingEntry")
+@doc("Find the current general booking page, including when booking is disabled.")
+op getBookingEntry(): {
+  @header("Cache-Control") cacheControl: "no-store";
+  @body body: BookingEntry;
+};
+
+model PublicBookingPage {
+  ownerName: string;
+  ownerTimeZone: string;
+  state: "BOOKING_DISABLED" | "OPEN";
+
+  @doc("Present only when OPEN. No meeting types exist in this slice.")
+  items?: [];
+}
+
+@get
+@route("/public/{username}")
+@tag("Public")
+@operationId("getPublicBookingPage")
+@doc("Read the general public booking page.")
+op getPublicBookingPage(@path username: string):
+  | {
+      @header("Cache-Control") cacheControl: "no-store";
+      @body body: PublicBookingPage;
+    }
+  | PageNotFound;
+
+model PublicBookingCommand {
+  enabled: boolean;
+  @minValue(1) expectedVersion: int64;
+}
+
+@put
+@route("/owner/public-booking")
+@tag("Owner")
+@operationId("setPublicBooking")
+@doc("Explicitly enable or disable public booking, using the shown profile version.")
+op setPublicBooking(
+  @minLength(1)
+  @header("Idempotency-Key")
+  idempotencyKey: string,
+
+  @body command: PublicBookingCommand,
+):
+  | {
+      @header("Cache-Control") cacheControl: "no-store";
+      @body body: OwnerProfile;
+    }
+  | StateConflict
+  | InvalidData
+  | MalformedRequest;
+
+@doc("The saved, definite result of an owner command. Exactly one of profile or error is present.")
+model OwnerOperationResult {
+  statusCode: int32;
+  profile?: OwnerProfile;
+  error?: ApiError;
+}
+
+@get
+@route("/owner/operations/{key}")
+@tag("Owner")
+@operationId("getOwnerOperation")
+@doc("Recover the saved result without executing the command again.")
+op getOwnerOperation(@path key: string):
+  | {
+      @header("Cache-Control") cacheControl: "no-store";
+      @body body: OwnerOperationResult;
+    }
+  | OperationUnavailable;
