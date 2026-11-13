@@ -1,5 +1,32 @@
 import { expect, test } from './real-server';
 
+test('невидимое имя и недопустимый username сохраняют черновик и опубликованный адрес', async ({
+  page,
+  request,
+}) => {
+  await page.goto('/admin');
+  const name = page.getByRole('textbox', { name: 'Имя', exact: true });
+  const username = page.getByRole('textbox', { name: 'Username', exact: true });
+  const before = await (await request.get('/api/owner/profile')).json();
+  await name.fill('\uFE0F');
+  await username.fill('\u212Aab');
+  page.once('dialog', (dialog) => dialog.accept());
+  await page
+    .getByRole('button', { name: 'Сохранить профиль', exact: true })
+    .click();
+  await expect(name).toHaveAttribute('aria-invalid', 'true');
+  await expect(username).toHaveAttribute('aria-invalid', 'true');
+  await expect(name).toHaveValue('\uFE0F');
+  await expect(username).toHaveValue('\u212Aab');
+  expect(await (await request.get('/api/owner/profile')).json()).toEqual(
+    before,
+  );
+  expect((await request.get(`/api/public/${before.username}`)).status()).toBe(
+    200,
+  );
+  expect((await request.get('/api/public/kab')).status()).toBe(404);
+});
+
 test('переносы строк не удаляются браузером молча и возвращаются как ошибка поля', async ({
   page,
   request,

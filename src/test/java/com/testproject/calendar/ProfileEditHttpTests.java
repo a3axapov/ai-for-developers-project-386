@@ -47,7 +47,8 @@ class ProfileEditHttpTests {
 
     @ParameterizedTest
     @ValueSource(strings = {"", "   ", "LONG", "\tAnna", "Anna\n", "\u0000", "\u007f", "\u0085",
-        "\u200b", "\u200d", "\u202e", "\u2060", "\uFEFF", "\u034f", "\u2028", "\u2029", "\u0378"})
+        "\u200b", "\u200d", "\u202e", "\u2060", "\uFEFF", "\u034f", "\uFE0F", "A\uFE0F",
+        "\uDB40\uDD00", "\u115f", "\u17b4", "\u180b", "\u3164", "\uffa0", "\u2028", "\u2029", "\u0378"})
     void invalidNameReturnsFieldErrorAndChangesNothing(String name) throws Exception {
         if (name.equals("LONG")) {
             name = "😀".repeat(101);
@@ -64,9 +65,16 @@ class ProfileEditHttpTests {
         assertEquals(404, get("/api/public/new-owner").statusCode());
     }
 
+    @Test
+    void printableCombiningMarksAndUnicodeSymbolsRemainValid() throws Exception {
+        var result = edit("printable", "Cafe\u0301 李 😀!", "OWNER", 1);
+        assertEquals(200, result.statusCode());
+        assertEquals("Cafe\u0301 李 😀!", json.readTree(result.body()).get("name").asString());
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {"", "  ", "ab", "LONG", "-abc", "abc-", "a b", "аbc", "a_b", "abc.def",
-        "\tabc", "abc\n", "\u200babc", "abc\u034f", "abc\u2028", "abc\u0000"})
+        "\tabc", "abc\n", "\u200babc", "abc\u034f", "abc\u2028", "abc\u0000", "\u212aab"})
     void invalidUsernameReturnsFieldErrorWithoutChangingNameOrLinks(String username) throws Exception {
         if (username.equals("LONG")) {
             username = "a".repeat(31);
@@ -79,6 +87,7 @@ class ProfileEditHttpTests {
         assertEquals("username", error.get("fieldErrors").get(0).get("field").asString());
         assertEquals(json.readTree(before.body()), json.readTree(get("/api/owner/profile").body()));
         assertEquals(200, get("/api/public/owner").statusCode());
+        assertEquals(404, get("/api/public/kab").statusCode());
     }
 
     @Test
