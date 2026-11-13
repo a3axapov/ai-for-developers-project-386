@@ -5,6 +5,9 @@ import com.testproject.calendar.generated.model.OwnerProfile;
 import com.testproject.calendar.generated.model.OwnerOperationResult;
 import com.testproject.calendar.generated.model.PublicBookingCommand;
 import com.testproject.calendar.generated.model.ProfileCommand;
+import com.testproject.calendar.generated.model.CreateMeetingTypeCommand;
+import com.testproject.calendar.generated.model.MeetingType;
+import com.testproject.calendar.generated.model.MeetingTypeList;
 import com.testproject.calendar.owner.OwnerState;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +20,22 @@ public class OwnerController implements OwnerApi {
 
     public OwnerController(OwnerState owner) {
         this.owner = owner;
+    }
+
+    @Override
+    public ResponseEntity<MeetingType> createMeetingType(String idempotencyKey, CreateMeetingTypeCommand command) {
+        return ResponseEntity.status(201).cacheControl(CacheControl.noStore())
+                .body(owner.createMeetingType(idempotencyKey, command));
+    }
+
+    @Override
+    public ResponseEntity<MeetingTypeList> listMeetingTypes() {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(new MeetingTypeList(owner.meetingTypes()));
+    }
+
+    @Override
+    public ResponseEntity<MeetingType> getMeetingType(String id) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(owner.meetingType(id));
     }
 
     @Override

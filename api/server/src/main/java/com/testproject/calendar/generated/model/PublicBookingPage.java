@@ -5,6 +5,7 @@ import java.util.Objects;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
+import com.testproject.calendar.generated.model.PublicMeetingType;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -63,7 +64,7 @@ public class PublicBookingPage {
 
   private StateEnum state;
 
-  private @Nullable List<Object> items;
+  private @Nullable List<PublicMeetingType> items;
 
   public PublicBookingPage() {
     super();
@@ -135,12 +136,12 @@ public class PublicBookingPage {
     this.state = state;
   }
 
-  public PublicBookingPage items(@Nullable List<Object> items) {
+  public PublicBookingPage items(@Nullable List<PublicMeetingType> items) {
     this.items = items;
     return this;
   }
 
-  public PublicBookingPage addItemsItem(Object itemsItem) {
+  public PublicBookingPage addItemsItem(PublicMeetingType itemsItem) {
     if (this.items == null) {
       this.items = new ArrayList<>();
     }
@@ -149,16 +150,16 @@ public class PublicBookingPage {
   }
 
   /**
-   * Present only when OPEN. No meeting types exist in this slice.
+   * Present only when OPEN; choosing even one item requires an explicit action.
    * @return items
    */
   @JsonProperty("items")
-  public @Nullable List<Object> getItems() {
+  public @Nullable List<PublicMeetingType> getItems() {
     return items;
   }
 
   @JsonProperty("items")
-  public void setItems(@Nullable List<Object> items) {
+  public void setItems(@Nullable List<PublicMeetingType> items) {
     this.items = items;
   }
 

@@ -6,6 +6,9 @@
 package com.testproject.calendar.generated.api;
 
 import com.testproject.calendar.generated.model.ApiError;
+import com.testproject.calendar.generated.model.CreateMeetingTypeCommand;
+import com.testproject.calendar.generated.model.MeetingType;
+import com.testproject.calendar.generated.model.MeetingTypeList;
 import com.testproject.calendar.generated.model.OwnerOperationResult;
 import com.testproject.calendar.generated.model.OwnerProfile;
 import com.testproject.calendar.generated.model.ProfileCommand;
@@ -24,6 +27,47 @@ import jakarta.annotation.Generated;
 
 @RequestMapping("${openapi.calendar.base-path:}")
 public interface OwnerApi {
+
+    String PATH_CREATE_MEETING_TYPE = "/api/owner/meeting-types";
+    /**
+     * POST /api/owner/meeting-types
+     *
+     * @param idempotencyKey  (required)
+     * @param createMeetingTypeCommand  (required)
+     * @return The request has succeeded and a new resource has been created as a result. (status code 201)
+     *         or The server could not understand the request due to invalid syntax. (status code 400)
+     *         or The request conflicts with the current state of the server. (status code 409)
+     *         or Client error (status code 422)
+     */
+    @RequestMapping(
+        method = RequestMethod.POST,
+        value = OwnerApi.PATH_CREATE_MEETING_TYPE,
+        produces = { "application/json" },
+        consumes = { "application/json" }
+    )
+    ResponseEntity<MeetingType> createMeetingType(
+         @RequestHeader(value = "Idempotency-Key", required = true) String idempotencyKey,
+         @RequestBody CreateMeetingTypeCommand createMeetingTypeCommand
+    );
+
+
+    String PATH_GET_MEETING_TYPE = "/api/owner/meeting-types/{id}";
+    /**
+     * GET /api/owner/meeting-types/{id}
+     *
+     * @param id  (required)
+     * @return The request has succeeded. (status code 200)
+     *         or The server cannot find the requested resource. (status code 404)
+     */
+    @RequestMapping(
+        method = RequestMethod.GET,
+        value = OwnerApi.PATH_GET_MEETING_TYPE,
+        produces = { "application/json" }
+    )
+    ResponseEntity<MeetingType> getMeetingType(
+         @PathVariable("id") String id
+    );
+
 
     String PATH_GET_OWNER_OPERATION = "/api/owner/operations/{key}";
     /**
@@ -57,6 +101,22 @@ public interface OwnerApi {
         produces = { "application/json" }
     )
     ResponseEntity<OwnerProfile> getOwnerProfile(
+        
+    );
+
+
+    String PATH_LIST_MEETING_TYPES = "/api/owner/meeting-types";
+    /**
+     * GET /api/owner/meeting-types
+     *
+     * @return The request has succeeded. (status code 200)
+     */
+    @RequestMapping(
+        method = RequestMethod.GET,
+        value = OwnerApi.PATH_LIST_MEETING_TYPES,
+        produces = { "application/json" }
+    )
+    ResponseEntity<MeetingTypeList> listMeetingTypes(
         
     );
 

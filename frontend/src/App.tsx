@@ -112,7 +112,7 @@ function HomePage() {
 
 export function App() {
   const path = window.location.pathname;
-  const bookingPath = /^\/booking\/([^/]+)$/.exec(path);
+  const bookingPath = /^\/booking\/([^/]+)(?:\/([^/]+))?$/.exec(path);
 
   return (
     <div className="site-shell">
@@ -142,7 +142,14 @@ export function App() {
         ) : path === '/booking' ? (
           <BookingPage />
         ) : bookingPath ? (
-          <BookingPage username={decodeURIComponent(bookingPath[1])} />
+          <BookingPage
+            username={decodeURIComponent(bookingPath[1])}
+            meetingTypeId={
+              bookingPath[2] === undefined
+                ? undefined
+                : decodeURIComponent(bookingPath[2])
+            }
+          />
         ) : path === '/admin' ? (
           <OwnerPage />
         ) : (

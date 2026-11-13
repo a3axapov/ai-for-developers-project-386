@@ -18,6 +18,105 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Health'
+  /api/owner/meeting-types:
+    post:
+      operationId: createMeetingType
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/IdempotencyKey'
+      responses:
+        '201':
+          description: The request has succeeded and a new resource has been created as a result.
+          headers:
+            Cache-Control:
+              required: true
+              schema:
+                type: string
+                enum:
+                  - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeetingType'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: The request conflicts with the current state of the server.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      tags:
+        - Owner
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMeetingTypeCommand'
+    get:
+      operationId: listMeetingTypes
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          headers:
+            Cache-Control:
+              required: true
+              schema:
+                type: string
+                enum:
+                  - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeetingTypeList'
+      tags:
+        - Owner
+  /api/owner/meeting-types/{id}:
+    get:
+      operationId: getMeetingType
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          headers:
+            Cache-Control:
+              required: true
+              schema:
+                type: string
+                enum:
+                  - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeetingType'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      tags:
+        - Owner
   /api/owner/operations/{key}:
     get:
       operationId: getOwnerOperation
@@ -223,6 +322,43 @@ paths:
                 $ref: '#/components/schemas/ApiError'
       tags:
         - Public
+  /api/public/{username}/meeting-types/{id}:
+    get:
+      operationId: getPublicMeetingType
+      description: Read explicitly selected conditions. Unknown username/ID returns 404 even when booking is disabled.
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          headers:
+            Cache-Control:
+              required: true
+              schema:
+                type: string
+                enum:
+                  - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicMeetingTypePage'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      tags:
+        - Public
 components:
   schemas:
     ApiError:
@@ -248,6 +384,41 @@ components:
       properties:
         bookingUrl:
           type: string
+    CreateMeetingTypeCommand:
+      type: object
+      required:
+        - id
+        - title
+        - description
+        - durationMinutes
+      properties:
+        id:
+          type: string
+          description: 'Immutable, case-sensitive ID: 1–64 ASCII letters, digits or hyphens.'
+        title:
+          type: string
+          description: Nonempty title after collapsing Unicode space separators and trimming. Nonprintable characters are rejected.
+        description:
+          type: string
+          description: At least 20 counted Unicode code points after normalizing spaces per line. Internal newlines remain; newlines, control and invisible characters do not count toward the minimum.
+        durationMinutes:
+          type: integer
+          format: int32
+        requiresApproval:
+          type: boolean
+          default: false
+    DateOverride:
+      type: object
+      required:
+        - date
+        - intervals
+      properties:
+        date:
+          type: string
+        intervals:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkingInterval'
     FieldError:
       type: object
       required:
@@ -278,6 +449,55 @@ components:
       maxLength: 128
       pattern: ^[A-Za-z0-9_-]+$
       description: 'Transport-safe operation key: 1 to 128 ASCII letters, digits, underscores or hyphens.'
+    MeetingType:
+      type: object
+      required:
+        - id
+        - title
+        - description
+        - durationMinutes
+        - requiresApproval
+        - timeZone
+        - version
+        - archived
+        - days
+        - dateOverrides
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        durationMinutes:
+          type: integer
+          format: int32
+        requiresApproval:
+          type: boolean
+        timeZone:
+          type: string
+        version:
+          type: integer
+          format: int64
+        archived:
+          type: boolean
+        days:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkingDay'
+        dateOverrides:
+          type: array
+          items:
+            $ref: '#/components/schemas/DateOverride'
+    MeetingTypeList:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MeetingType'
     OwnerOperationResult:
       type: object
       required:
@@ -288,9 +508,11 @@ components:
           format: int32
         profile:
           $ref: '#/components/schemas/OwnerProfile'
+        meetingType:
+          $ref: '#/components/schemas/MeetingType'
         error:
           $ref: '#/components/schemas/ApiError'
-      description: The saved, definite result of an owner command. Exactly one of profile or error is present.
+      description: The saved, definite result of an owner command. Exactly one of profile, meetingType or error is present.
     OwnerProfile:
       type: object
       required:
@@ -364,7 +586,83 @@ components:
             - OPEN
         items:
           type: array
-          items: {}
-          minItems: 0
-          maxItems: 0
-          description: Present only when OPEN. No meeting types exist in this slice.
+          items:
+            $ref: '#/components/schemas/PublicMeetingType'
+          description: Present only when OPEN; choosing even one item requires an explicit action.
+    PublicMeetingType:
+      type: object
+      required:
+        - id
+        - title
+        - description
+        - durationMinutes
+        - requiresApproval
+        - timeZone
+        - conditionsToken
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        durationMinutes:
+          type: integer
+          format: int32
+        requiresApproval:
+          type: boolean
+        timeZone:
+          type: string
+        conditionsToken:
+          type: string
+          description: Content-derived token over title, description, durationMinutes and requiresApproval only.
+    PublicMeetingTypePage:
+      type: object
+      required:
+        - ownerName
+        - ownerTimeZone
+        - state
+      properties:
+        ownerName:
+          type: string
+        ownerTimeZone:
+          type: string
+        state:
+          type: string
+          enum:
+            - BOOKING_DISABLED
+            - OPEN
+        meetingType:
+          allOf:
+            - $ref: '#/components/schemas/PublicMeetingType'
+          description: Present only when OPEN.
+    WorkingDay:
+      type: object
+      required:
+        - day
+        - intervals
+      properties:
+        day:
+          type: string
+          enum:
+            - MONDAY
+            - TUESDAY
+            - WEDNESDAY
+            - THURSDAY
+            - FRIDAY
+            - SATURDAY
+            - SUNDAY
+        intervals:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkingInterval'
+    WorkingInterval:
+      type: object
+      required:
+        - start
+        - end
+      properties:
+        start:
+          type: string
+        end:
+          type: string

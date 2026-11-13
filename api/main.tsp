@@ -49,6 +49,96 @@ model BookingEntry {
   bookingUrl: string;
 }
 
+model CreateMeetingTypeCommand {
+  @doc("Immutable, case-sensitive ID: 1–64 ASCII letters, digits or hyphens.")
+  id: string;
+
+  @doc("Nonempty title after collapsing Unicode space separators and trimming. Nonprintable characters are rejected.")
+  title: string;
+
+  @doc("At least 20 counted Unicode code points after normalizing spaces per line. Internal newlines remain; newlines, control and invisible characters do not count toward the minimum.")
+  description: string;
+
+  durationMinutes: int32;
+  requiresApproval?: boolean = false;
+}
+
+model WorkingInterval {
+  start: string;
+  end: string;
+}
+
+model WorkingDay {
+  day:
+    | "MONDAY"
+    | "TUESDAY"
+    | "WEDNESDAY"
+    | "THURSDAY"
+    | "FRIDAY"
+    | "SATURDAY"
+    | "SUNDAY";
+  intervals: WorkingInterval[];
+}
+
+model DateOverride {
+  date: string;
+  intervals: WorkingInterval[];
+}
+
+model MeetingType {
+  id: string;
+  title: string;
+  description: string;
+  durationMinutes: int32;
+  requiresApproval: boolean;
+  timeZone: string;
+  version: int64;
+  archived: boolean;
+  days: WorkingDay[];
+  dateOverrides: DateOverride[];
+}
+
+model MeetingTypeList {
+  items: MeetingType[];
+}
+
+@post
+@route("/owner/meeting-types")
+@tag("Owner")
+@operationId("createMeetingType")
+op createMeetingType(
+  @header("Idempotency-Key") idempotencyKey: IdempotencyKey,
+  @body command: CreateMeetingTypeCommand,
+):
+  | {
+      @statusCode statusCode: 201;
+      @header("Cache-Control") cacheControl: "no-store";
+      @body body: MeetingType;
+    }
+  | StateConflict
+  | InvalidData
+  | MalformedRequest;
+
+@get
+@route("/owner/meeting-types")
+@tag("Owner")
+@operationId("listMeetingTypes")
+op listMeetingTypes(): {
+  @header("Cache-Control") cacheControl: "no-store";
+  @body body: MeetingTypeList;
+};
+
+@get
+@route("/owner/meeting-types/{id}")
+@tag("Owner")
+@operationId("getMeetingType")
+op getMeetingType(@path id: string):
+  | {
+      @header("Cache-Control") cacheControl: "no-store";
+      @body body: MeetingType;
+    }
+  | PageNotFound;
+
 model ApiError {
   code: string;
   message: string;
@@ -107,8 +197,29 @@ model PublicBookingPage {
   ownerTimeZone: string;
   state: "BOOKING_DISABLED" | "OPEN";
 
-  @doc("Present only when OPEN. No meeting types exist in this slice.")
-  items?: [];
+  @doc("Present only when OPEN; choosing even one item requires an explicit action.")
+  items?: PublicMeetingType[];
+}
+
+model PublicMeetingType {
+  id: string;
+  title: string;
+  description: string;
+  durationMinutes: int32;
+  requiresApproval: boolean;
+  timeZone: string;
+
+  @doc("Content-derived token over title, description, durationMinutes and requiresApproval only.")
+  conditionsToken: string;
+}
+
+model PublicMeetingTypePage {
+  ownerName: string;
+  ownerTimeZone: string;
+  state: "BOOKING_DISABLED" | "OPEN";
+
+  @doc("Present only when OPEN.")
+  meetingType?: PublicMeetingType;
 }
 
 @get
@@ -120,6 +231,18 @@ op getPublicBookingPage(@path username: string):
   | {
       @header("Cache-Control") cacheControl: "no-store";
       @body body: PublicBookingPage;
+    }
+  | PageNotFound;
+
+@get
+@route("/public/{username}/meeting-types/{id}")
+@tag("Public")
+@operationId("getPublicMeetingType")
+@doc("Read explicitly selected conditions. Unknown username/ID returns 404 even when booking is disabled.")
+op getPublicMeetingType(@path username: string, @path id: string):
+  | {
+      @header("Cache-Control") cacheControl: "no-store";
+      @body body: PublicMeetingTypePage;
     }
   | PageNotFound;
 
@@ -180,10 +303,11 @@ op setPublicBooking(
   | InvalidData
   | MalformedRequest;
 
-@doc("The saved, definite result of an owner command. Exactly one of profile or error is present.")
+@doc("The saved, definite result of an owner command. Exactly one of profile, meetingType or error is present.")
 model OwnerOperationResult {
   statusCode: int32;
   profile?: OwnerProfile;
+  meetingType?: MeetingType;
   error?: ApiError;
 }
 

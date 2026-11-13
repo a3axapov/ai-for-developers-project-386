@@ -386,6 +386,26 @@ h3 {
   resize: vertical;
 }
 
+.profile-editor input[type='number'] {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.6rem;
+  font: inherit;
+}
+
+.meeting-card {
+  min-width: 0;
+  margin-block: 1.5rem;
+  padding: 1rem;
+  border: 1px solid #d5d0df;
+  border-radius: 0.75rem;
+  overflow-wrap: anywhere;
+}
+
+.meeting-description {
+  white-space: pre-wrap;
+}
+
 .profile-editor [aria-invalid='true'] {
   border: 2px solid #9c2341;
 }

@@ -8,6 +8,7 @@ package com.testproject.calendar.generated.api;
 import com.testproject.calendar.generated.model.ApiError;
 import com.testproject.calendar.generated.model.BookingEntry;
 import com.testproject.calendar.generated.model.PublicBookingPage;
+import com.testproject.calendar.generated.model.PublicMeetingTypePage;
 import org.springframework.http.ResponseEntity;
 
 import org.springframework.web.bind.annotation.*;
@@ -56,6 +57,27 @@ public interface PublicApi {
     )
     ResponseEntity<PublicBookingPage> getPublicBookingPage(
          @PathVariable("username") String username
+    );
+
+
+    String PATH_GET_PUBLIC_MEETING_TYPE = "/api/public/{username}/meeting-types/{id}";
+    /**
+     * GET /api/public/{username}/meeting-types/{id}
+     * Read explicitly selected conditions. Unknown username/ID returns 404 even when booking is disabled.
+     *
+     * @param username  (required)
+     * @param id  (required)
+     * @return The request has succeeded. (status code 200)
+     *         or The server cannot find the requested resource. (status code 404)
+     */
+    @RequestMapping(
+        method = RequestMethod.GET,
+        value = PublicApi.PATH_GET_PUBLIC_MEETING_TYPE,
+        produces = { "application/json" }
+    )
+    ResponseEntity<PublicMeetingTypePage> getPublicMeetingType(
+         @PathVariable("username") String username,
+         @PathVariable("id") String id
     );
 
 }

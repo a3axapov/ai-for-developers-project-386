@@ -5,6 +5,7 @@ import java.util.Objects;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.testproject.calendar.generated.model.ApiError;
+import com.testproject.calendar.generated.model.MeetingType;
 import com.testproject.calendar.generated.model.OwnerProfile;
 import org.springframework.lang.Nullable;
 import java.time.OffsetDateTime;
@@ -14,7 +15,7 @@ import java.util.*;
 import jakarta.annotation.Generated;
 
 /**
- * The saved, definite result of an owner command. Exactly one of profile or error is present.
+ * The saved, definite result of an owner command. Exactly one of profile, meetingType or error is present.
  */
 
 @Generated(value = "org.openapitools.codegen.languages.SpringCodegen", comments = "Generator version: 7.27.0")
@@ -23,6 +24,8 @@ public class OwnerOperationResult {
   private Integer statusCode;
 
   private @Nullable OwnerProfile profile;
+
+  private @Nullable MeetingType meetingType;
 
   private @Nullable ApiError error;
 
@@ -75,6 +78,25 @@ public class OwnerOperationResult {
     this.profile = profile;
   }
 
+  public OwnerOperationResult meetingType(@Nullable MeetingType meetingType) {
+    this.meetingType = meetingType;
+    return this;
+  }
+
+  /**
+   * Get meetingType
+   * @return meetingType
+   */
+  @JsonProperty("meetingType")
+  public @Nullable MeetingType getMeetingType() {
+    return meetingType;
+  }
+
+  @JsonProperty("meetingType")
+  public void setMeetingType(@Nullable MeetingType meetingType) {
+    this.meetingType = meetingType;
+  }
+
   public OwnerOperationResult error(@Nullable ApiError error) {
     this.error = error;
     return this;
@@ -105,12 +127,13 @@ public class OwnerOperationResult {
     OwnerOperationResult ownerOperationResult = (OwnerOperationResult) o;
     return Objects.equals(this.statusCode, ownerOperationResult.statusCode) &&
         Objects.equals(this.profile, ownerOperationResult.profile) &&
+        Objects.equals(this.meetingType, ownerOperationResult.meetingType) &&
         Objects.equals(this.error, ownerOperationResult.error);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(statusCode, profile, error);
+    return Objects.hash(statusCode, profile, meetingType, error);
   }
 
   @Override
@@ -119,6 +142,7 @@ public class OwnerOperationResult {
     sb.append("class OwnerOperationResult {\n");
     sb.append("    statusCode: ").append(toIndentedString(statusCode)).append("\n");
     sb.append("    profile: ").append(toIndentedString(profile)).append("\n");
+    sb.append("    meetingType: ").append(toIndentedString(meetingType)).append("\n");
     sb.append("    error: ").append(toIndentedString(error)).append("\n");
     sb.append("}");
     return sb.toString();

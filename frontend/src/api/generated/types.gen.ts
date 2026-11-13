@@ -15,6 +15,28 @@ export type BookingEntry = {
     bookingUrl: string;
 };
 
+export type CreateMeetingTypeCommand = {
+    /**
+     * Immutable, case-sensitive ID: 1–64 ASCII letters, digits or hyphens.
+     */
+    id: string;
+    /**
+     * Nonempty title after collapsing Unicode space separators and trimming. Nonprintable characters are rejected.
+     */
+    title: string;
+    /**
+     * At least 20 counted Unicode code points after normalizing spaces per line. Internal newlines remain; newlines, control and invisible characters do not count toward the minimum.
+     */
+    description: string;
+    durationMinutes: number;
+    requiresApproval?: boolean;
+};
+
+export type DateOverride = {
+    date: string;
+    intervals: Array<WorkingInterval>;
+};
+
 export type FieldError = {
     field: string;
     code: string;
@@ -36,12 +58,30 @@ export type Health = {
  */
 export type IdempotencyKey = string;
 
+export type MeetingType = {
+    id: string;
+    title: string;
+    description: string;
+    durationMinutes: number;
+    requiresApproval: boolean;
+    timeZone: string;
+    version: number;
+    archived: boolean;
+    days: Array<WorkingDay>;
+    dateOverrides: Array<DateOverride>;
+};
+
+export type MeetingTypeList = {
+    items: Array<MeetingType>;
+};
+
 /**
- * The saved, definite result of an owner command. Exactly one of profile or error is present.
+ * The saved, definite result of an owner command. Exactly one of profile, meetingType or error is present.
  */
 export type OwnerOperationResult = {
     statusCode: number;
     profile?: OwnerProfile;
+    meetingType?: MeetingType;
     error?: ApiError;
 };
 
@@ -82,9 +122,42 @@ export type PublicBookingPage = {
     ownerTimeZone: string;
     state: 'BOOKING_DISABLED' | 'OPEN';
     /**
-     * Present only when OPEN. No meeting types exist in this slice.
+     * Present only when OPEN; choosing even one item requires an explicit action.
      */
-    items?: Array<unknown>;
+    items?: Array<PublicMeetingType>;
+};
+
+export type PublicMeetingType = {
+    id: string;
+    title: string;
+    description: string;
+    durationMinutes: number;
+    requiresApproval: boolean;
+    timeZone: string;
+    /**
+     * Content-derived token over title, description, durationMinutes and requiresApproval only.
+     */
+    conditionsToken: string;
+};
+
+export type PublicMeetingTypePage = {
+    ownerName: string;
+    ownerTimeZone: string;
+    state: 'BOOKING_DISABLED' | 'OPEN';
+    /**
+     * Present only when OPEN.
+     */
+    meetingType?: PublicMeetingType;
+};
+
+export type WorkingDay = {
+    day: 'MONDAY' | 'TUESDAY' | 'WEDNESDAY' | 'THURSDAY' | 'FRIDAY' | 'SATURDAY' | 'SUNDAY';
+    intervals: Array<WorkingInterval>;
+};
+
+export type WorkingInterval = {
+    start: string;
+    end: string;
 };
 
 export type GetHealthData = {
@@ -102,6 +175,85 @@ export type GetHealthResponses = {
 };
 
 export type GetHealthResponse = GetHealthResponses[keyof GetHealthResponses];
+
+export type ListMeetingTypesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/owner/meeting-types';
+};
+
+export type ListMeetingTypesResponses = {
+    /**
+     * The request has succeeded.
+     */
+    200: MeetingTypeList;
+};
+
+export type ListMeetingTypesResponse = ListMeetingTypesResponses[keyof ListMeetingTypesResponses];
+
+export type CreateMeetingTypeData = {
+    body: CreateMeetingTypeCommand;
+    headers: {
+        'Idempotency-Key': IdempotencyKey;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/owner/meeting-types';
+};
+
+export type CreateMeetingTypeErrors = {
+    /**
+     * The server could not understand the request due to invalid syntax.
+     */
+    400: ApiError;
+    /**
+     * The request conflicts with the current state of the server.
+     */
+    409: ApiError;
+    /**
+     * Client error
+     */
+    422: ApiError;
+};
+
+export type CreateMeetingTypeError = CreateMeetingTypeErrors[keyof CreateMeetingTypeErrors];
+
+export type CreateMeetingTypeResponses = {
+    /**
+     * The request has succeeded and a new resource has been created as a result.
+     */
+    201: MeetingType;
+};
+
+export type CreateMeetingTypeResponse = CreateMeetingTypeResponses[keyof CreateMeetingTypeResponses];
+
+export type GetMeetingTypeData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/owner/meeting-types/{id}';
+};
+
+export type GetMeetingTypeErrors = {
+    /**
+     * The server cannot find the requested resource.
+     */
+    404: ApiError;
+};
+
+export type GetMeetingTypeError = GetMeetingTypeErrors[keyof GetMeetingTypeErrors];
+
+export type GetMeetingTypeResponses = {
+    /**
+     * The request has succeeded.
+     */
+    200: MeetingType;
+};
+
+export type GetMeetingTypeResponse = GetMeetingTypeResponses[keyof GetMeetingTypeResponses];
 
 export type GetOwnerOperationData = {
     body?: never;
@@ -260,3 +412,31 @@ export type GetPublicBookingPageResponses = {
 };
 
 export type GetPublicBookingPageResponse = GetPublicBookingPageResponses[keyof GetPublicBookingPageResponses];
+
+export type GetPublicMeetingTypeData = {
+    body?: never;
+    path: {
+        username: string;
+        id: string;
+    };
+    query?: never;
+    url: '/api/public/{username}/meeting-types/{id}';
+};
+
+export type GetPublicMeetingTypeErrors = {
+    /**
+     * The server cannot find the requested resource.
+     */
+    404: ApiError;
+};
+
+export type GetPublicMeetingTypeError = GetPublicMeetingTypeErrors[keyof GetPublicMeetingTypeErrors];
+
+export type GetPublicMeetingTypeResponses = {
+    /**
+     * The request has succeeded.
+     */
+    200: PublicMeetingTypePage;
+};
+
+export type GetPublicMeetingTypeResponse = GetPublicMeetingTypeResponses[keyof GetPublicMeetingTypeResponses];
