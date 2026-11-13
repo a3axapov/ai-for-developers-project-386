@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   getOwnerProfile,
   getOwnerOperation,
   setPublicBooking,
+  updateOwnerProfile,
   type ApiError,
   type OwnerProfile,
 } from './api/generated';
@@ -20,12 +21,57 @@ export function OwnerPage() {
   const [copyMessage, setCopyMessage] = useState<string>();
   const [pendingKey, setPendingKey] = useState<string>();
   const [operationUnavailable, setOperationUnavailable] = useState(false);
+  const [draft, setDraft] = useState({ name: '', username: '' });
+  const [fieldErrors, setFieldErrors] = useState<ApiError['fieldErrors']>([]);
+  const [profileOperation, setProfileOperation] = useState(false);
+  const draftInitialized = useRef(false);
+
+  async function saveProfile() {
+    if (state.status !== 'ready' || saving || pendingKey) return;
+    const username = draft.username
+      .replace(/^\p{Zs}+|\p{Zs}+$/gu, '')
+      .toLowerCase();
+    if (
+      username !== state.profile.username &&
+      !window.confirm(
+        `Опубликованные ссылки потребуется заменить. Старые адреса перестанут работать без перенаправления. Общая ссылка: ${state.profile.bookingUrl} → /booking/${username}. Сохранить изменение?`,
+      )
+    )
+      return;
+    setSaving(true);
+    setProfileOperation(true);
+    setCommandError(undefined);
+    setFieldErrors([]);
+    const key = crypto.randomUUID();
+    try {
+      const result = await updateOwnerProfile({
+        headers: { 'Idempotency-Key': key },
+        signal: AbortSignal.timeout(15_000),
+        body: { ...draft, expectedVersion: state.profile.version },
+      });
+      if (result.data) {
+        setState({ status: 'ready', profile: result.data });
+        setDraft({ name: result.data.name, username: result.data.username });
+      } else if (
+        result.response &&
+        [400, 409, 422].includes(result.response.status) &&
+        result.error?.code
+      ) {
+        definiteFailure(result.error);
+      } else unknownOutcome(key);
+    } catch {
+      unknownOutcome(key);
+    } finally {
+      setSaving(false);
+    }
+  }
 
   function definiteFailure(error: ApiError) {
     if (error.currentProfile)
       setState({ status: 'ready', profile: error.currentProfile });
     setPendingKey(undefined);
     setCommandError(error.message);
+    setFieldErrors(error.fieldErrors ?? []);
   }
 
   function unknownOutcome(key: string) {
@@ -45,6 +91,11 @@ export function OwnerPage() {
       });
       if (result.data?.statusCode === 200 && result.data.profile) {
         setState({ status: 'ready', profile: result.data.profile });
+        if (profileOperation)
+          setDraft({
+            name: result.data.profile.name,
+            username: result.data.profile.username,
+          });
         setPendingKey(undefined);
         setCommandError(undefined);
       } else if (result.data?.error) {
@@ -81,6 +132,7 @@ export function OwnerPage() {
   async function toggleBooking() {
     if (state.status !== 'ready' || saving || pendingKey) return;
     setSaving(true);
+    setProfileOperation(false);
     setCommandError(undefined);
     const key = crypto.randomUUID();
     try {
@@ -113,6 +165,10 @@ export function OwnerPage() {
       ({ data }) => {
         if (!controller.signal.aborted) {
           setState({ status: 'ready', profile: data });
+          if (!draftInitialized.current) {
+            setDraft({ name: data.name, username: data.username });
+            draftInitialized.current = true;
+          }
         }
       },
       () => {
@@ -159,6 +215,70 @@ export function OwnerPage() {
               <dd>{state.profile.timeZone}</dd>
             </div>
           </dl>
+          <form
+            className="profile-editor"
+            aria-label="Редактирование профиля"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void saveProfile();
+            }}
+          >
+            <label htmlFor="owner-name">Имя</label>
+            <textarea
+              rows={1}
+              id="owner-name"
+              value={draft.name}
+              disabled={saving || Boolean(pendingKey)}
+              aria-invalid={
+                fieldErrors?.some((error) => error.field === 'name') ||
+                undefined
+              }
+              aria-describedby={
+                fieldErrors?.some((error) => error.field === 'name')
+                  ? 'name-error'
+                  : undefined
+              }
+              onChange={(event) =>
+                setDraft({ ...draft, name: event.target.value })
+              }
+            />
+            {fieldErrors
+              ?.filter((error) => error.field === 'name')
+              .map((error) => (
+                <p id="name-error" key={error.field}>
+                  {error.message}
+                </p>
+              ))}
+            <label htmlFor="owner-username">Username</label>
+            <textarea
+              rows={1}
+              id="owner-username"
+              value={draft.username}
+              disabled={saving || Boolean(pendingKey)}
+              aria-invalid={
+                fieldErrors?.some((error) => error.field === 'username') ||
+                undefined
+              }
+              aria-describedby={
+                fieldErrors?.some((error) => error.field === 'username')
+                  ? 'username-error'
+                  : undefined
+              }
+              onChange={(event) =>
+                setDraft({ ...draft, username: event.target.value })
+              }
+            />
+            {fieldErrors
+              ?.filter((error) => error.field === 'username')
+              .map((error) => (
+                <p id="username-error" key={error.field}>
+                  {error.message}
+                </p>
+              ))}
+            <button className="button" disabled={saving || Boolean(pendingKey)}>
+              Сохранить профиль
+            </button>
+          </form>
           <p>
             {state.profile.bookingEnabled
               ? 'Публичная запись включена'

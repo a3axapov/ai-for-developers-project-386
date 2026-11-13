@@ -21,9 +21,11 @@ test('владелец видит исходный профиль из наст�
     page.getByRole('heading', { name: 'Профиль владельца' }),
   ).toBeVisible();
   await expect(
-    page.getByText('Владелец календаря', { exact: true }),
+    page.getByRole('definition').filter({ hasText: /^Владелец календаря$/ }),
   ).toBeVisible();
-  await expect(page.getByText('owner', { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('definition').filter({ hasText: /^owner$/ }),
+  ).toBeVisible();
   await expect(page.getByText('Europe/Moscow', { exact: true })).toBeVisible();
   await expect(page.getByText('Публичная запись выключена')).toBeVisible();
 });

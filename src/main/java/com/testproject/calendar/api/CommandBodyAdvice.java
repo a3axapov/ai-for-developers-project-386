@@ -1,6 +1,7 @@
 package com.testproject.calendar.api;
 
 import com.testproject.calendar.generated.model.PublicBookingCommand;
+import com.testproject.calendar.generated.model.ProfileCommand;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -28,7 +29,7 @@ public class CommandBodyAdvice extends RequestBodyAdviceAdapter {
     @Override
     public boolean supports(MethodParameter parameter, Type targetType,
             Class<? extends HttpMessageConverter<?>> converterType) {
-        return targetType == PublicBookingCommand.class;
+        return targetType == PublicBookingCommand.class || targetType == ProfileCommand.class;
     }
 
     @Override

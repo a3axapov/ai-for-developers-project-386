@@ -128,6 +128,33 @@ model PublicBookingCommand {
   @minValue(1) expectedVersion: int64;
 }
 
+model ProfileCommand {
+  @doc("1–100 Unicode code points after trimming and collapsing Unicode space separators. Control, nonprintable and invisible control characters are rejected before normalization.")
+  name: string;
+
+  @doc("Trim edge space separators and lowercase; 3–30 ASCII letters, digits or hyphens, with alphanumeric boundaries.")
+  username: string;
+
+  @minValue(1) expectedVersion: int64;
+}
+
+@put
+@route("/owner/profile")
+@tag("Owner")
+@operationId("updateOwnerProfile")
+@doc("Edit name and username without changing booking state. The UI must explicitly confirm the published-link warning before a username change. Uses the shared owner operation key space.")
+op updateOwnerProfile(
+  @header("Idempotency-Key") idempotencyKey: IdempotencyKey,
+  @body command: ProfileCommand,
+):
+  | {
+      @header("Cache-Control") cacheControl: "no-store";
+      @body body: OwnerProfile;
+    }
+  | StateConflict
+  | InvalidData
+  | MalformedRequest;
+
 @doc("Transport-safe operation key: 1 to 128 ASCII letters, digits, underscores or hyphens.")
 @minLength(1)
 @maxLength(128)

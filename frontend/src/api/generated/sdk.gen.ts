@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { GetBookingEntryData, GetBookingEntryResponses, GetHealthData, GetHealthResponses, GetOwnerOperationData, GetOwnerOperationErrors, GetOwnerOperationResponses, GetOwnerProfileData, GetOwnerProfileResponses, GetPublicBookingPageData, GetPublicBookingPageErrors, GetPublicBookingPageResponses, SetPublicBookingData, SetPublicBookingErrors, SetPublicBookingResponses } from './types.gen';
+import type { GetBookingEntryData, GetBookingEntryResponses, GetHealthData, GetHealthResponses, GetOwnerOperationData, GetOwnerOperationErrors, GetOwnerOperationResponses, GetOwnerProfileData, GetOwnerProfileResponses, GetPublicBookingPageData, GetPublicBookingPageErrors, GetPublicBookingPageResponses, SetPublicBookingData, SetPublicBookingErrors, SetPublicBookingResponses, UpdateOwnerProfileData, UpdateOwnerProfileErrors, UpdateOwnerProfileResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -32,6 +32,18 @@ export const getOwnerOperation = <ThrowOnError extends boolean = false>(options:
  * Read the calendar owner's profile.
  */
 export const getOwnerProfile = <ThrowOnError extends boolean = false>(options?: Options<GetOwnerProfileData, ThrowOnError>): RequestResult<GetOwnerProfileResponses, unknown, ThrowOnError> => (options?.client ?? client).get<GetOwnerProfileResponses, unknown, ThrowOnError>({ url: '/api/owner/profile', ...options });
+
+/**
+ * Edit name and username without changing booking state. The UI must explicitly confirm the published-link warning before a username change. Uses the shared owner operation key space.
+ */
+export const updateOwnerProfile = <ThrowOnError extends boolean = false>(options: Options<UpdateOwnerProfileData, ThrowOnError>): RequestResult<UpdateOwnerProfileResponses, UpdateOwnerProfileErrors, ThrowOnError> => (options.client ?? client).put<UpdateOwnerProfileResponses, UpdateOwnerProfileErrors, ThrowOnError>({
+    url: '/api/owner/profile',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
 
 /**
  * Explicitly enable or disable public booking, using the shown profile version. An invalid Idempotency-Key returns 400 MALFORMED_REQUEST without changing state or saving an outcome.

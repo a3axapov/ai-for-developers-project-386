@@ -8,6 +8,7 @@ package com.testproject.calendar.generated.api;
 import com.testproject.calendar.generated.model.ApiError;
 import com.testproject.calendar.generated.model.OwnerOperationResult;
 import com.testproject.calendar.generated.model.OwnerProfile;
+import com.testproject.calendar.generated.model.ProfileCommand;
 import com.testproject.calendar.generated.model.PublicBookingCommand;
 import org.springframework.http.ResponseEntity;
 
@@ -81,6 +82,30 @@ public interface OwnerApi {
     ResponseEntity<OwnerProfile> setPublicBooking(
          @RequestHeader(value = "Idempotency-Key", required = true) String idempotencyKey,
          @RequestBody PublicBookingCommand publicBookingCommand
+    );
+
+
+    String PATH_UPDATE_OWNER_PROFILE = "/api/owner/profile";
+    /**
+     * PUT /api/owner/profile
+     * Edit name and username without changing booking state. The UI must explicitly confirm the published-link warning before a username change. Uses the shared owner operation key space.
+     *
+     * @param idempotencyKey  (required)
+     * @param profileCommand  (required)
+     * @return The request has succeeded. (status code 200)
+     *         or The server could not understand the request due to invalid syntax. (status code 400)
+     *         or The request conflicts with the current state of the server. (status code 409)
+     *         or Client error (status code 422)
+     */
+    @RequestMapping(
+        method = RequestMethod.PUT,
+        value = OwnerApi.PATH_UPDATE_OWNER_PROFILE,
+        produces = { "application/json" },
+        consumes = { "application/json" }
+    )
+    ResponseEntity<OwnerProfile> updateOwnerProfile(
+         @RequestHeader(value = "Idempotency-Key", required = true) String idempotencyKey,
+         @RequestBody ProfileCommand profileCommand
     );
 
 }

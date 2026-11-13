@@ -19,11 +19,17 @@ test('профиль показывает изменённую YAML-конфиг
   page,
 }) => {
   await page.goto('/admin');
-  await expect(page.getByText('Анна Петрова', { exact: true })).toBeVisible();
-  await expect(page.getByText('anna-1', { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('definition').filter({ hasText: /^Анна Петрова$/ }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('definition').filter({ hasText: /^anna-1$/ }),
+  ).toBeVisible();
   await expect(
     page.getByText('Pacific/Auckland', { exact: true }),
   ).toBeVisible();
   await page.reload();
-  await expect(page.getByText('Анна Петрова', { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('definition').filter({ hasText: /^Анна Петрова$/ }),
+  ).toBeVisible();
 });

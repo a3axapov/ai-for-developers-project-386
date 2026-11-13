@@ -31,7 +31,7 @@ public class ApiExceptionHandler {
     public ResponseEntity<ApiError> handleMalformedBody(HttpServletRequest request) {
         var raw = request.getAttribute(CommandBodyAdvice.RAW_BODY);
         return handleFailure(owner.malformedResult(request.getHeader("Idempotency-Key"),
-                raw == null ? "" : raw.toString()));
+                request.getRequestURI(), raw == null ? "" : raw.toString()));
     }
 
     @ExceptionHandler(MissingRequestHeaderException.class)
@@ -43,6 +43,7 @@ public class ApiExceptionHandler {
     @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
     public ResponseEntity<ApiError> handleNonJsonBody(HttpServletRequest request) throws IOException {
         var body = new String(request.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-        return handleFailure(owner.malformedResult(request.getHeader("Idempotency-Key"), body));
+        return handleFailure(owner.malformedResult(request.getHeader("Idempotency-Key"),
+                request.getRequestURI(), body));
     }
 }

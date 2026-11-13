@@ -4,6 +4,7 @@ import com.testproject.calendar.generated.api.OwnerApi;
 import com.testproject.calendar.generated.model.OwnerProfile;
 import com.testproject.calendar.generated.model.OwnerOperationResult;
 import com.testproject.calendar.generated.model.PublicBookingCommand;
+import com.testproject.calendar.generated.model.ProfileCommand;
 import com.testproject.calendar.owner.OwnerState;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
@@ -27,6 +28,12 @@ public class OwnerController implements OwnerApi {
     public ResponseEntity<OwnerProfile> setPublicBooking(String idempotencyKey, PublicBookingCommand command) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())
                 .body(owner.setPublicBooking(idempotencyKey, command));
+    }
+
+    @Override
+    public ResponseEntity<OwnerProfile> updateOwnerProfile(String idempotencyKey, ProfileCommand command) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(owner.updateProfile(idempotencyKey, command));
     }
 
     @Override

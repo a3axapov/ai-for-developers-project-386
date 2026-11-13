@@ -71,6 +71,55 @@ paths:
                 $ref: '#/components/schemas/OwnerProfile'
       tags:
         - Owner
+    put:
+      operationId: updateOwnerProfile
+      description: Edit name and username without changing booking state. The UI must explicitly confirm the published-link warning before a username change. Uses the shared owner operation key space.
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/IdempotencyKey'
+      responses:
+        '200':
+          description: The request has succeeded.
+          headers:
+            Cache-Control:
+              required: true
+              schema:
+                type: string
+                enum:
+                  - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnerProfile'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: The request conflicts with the current state of the server.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      tags:
+        - Owner
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileCommand'
   /api/owner/public-booking:
     put:
       operationId: setPublicBooking
@@ -268,6 +317,23 @@ components:
           type: string
           description: Same-origin public booking page path.
       description: The single calendar owner's current profile.
+    ProfileCommand:
+      type: object
+      required:
+        - name
+        - username
+        - expectedVersion
+      properties:
+        name:
+          type: string
+          description: 1–100 Unicode code points after trimming and collapsing Unicode space separators. Control, nonprintable and invisible control characters are rejected before normalization.
+        username:
+          type: string
+          description: Trim edge space separators and lowercase; 3–30 ASCII letters, digits or hyphens, with alphanumeric boundaries.
+        expectedVersion:
+          type: integer
+          format: int64
+          minimum: 1
     PublicBookingCommand:
       type: object
       required:

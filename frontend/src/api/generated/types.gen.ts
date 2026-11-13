@@ -60,6 +60,18 @@ export type OwnerProfile = {
     bookingUrl: string;
 };
 
+export type ProfileCommand = {
+    /**
+     * 1–100 Unicode code points after trimming and collapsing Unicode space separators. Control, nonprintable and invisible control characters are rejected before normalization.
+     */
+    name: string;
+    /**
+     * Trim edge space separators and lowercase; 3–30 ASCII letters, digits or hyphens, with alphanumeric boundaries.
+     */
+    username: string;
+    expectedVersion: number;
+};
+
 export type PublicBookingCommand = {
     enabled: boolean;
     expectedVersion: number;
@@ -133,6 +145,42 @@ export type GetOwnerProfileResponses = {
 };
 
 export type GetOwnerProfileResponse = GetOwnerProfileResponses[keyof GetOwnerProfileResponses];
+
+export type UpdateOwnerProfileData = {
+    body: ProfileCommand;
+    headers: {
+        'Idempotency-Key': IdempotencyKey;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/owner/profile';
+};
+
+export type UpdateOwnerProfileErrors = {
+    /**
+     * The server could not understand the request due to invalid syntax.
+     */
+    400: ApiError;
+    /**
+     * The request conflicts with the current state of the server.
+     */
+    409: ApiError;
+    /**
+     * Client error
+     */
+    422: ApiError;
+};
+
+export type UpdateOwnerProfileError = UpdateOwnerProfileErrors[keyof UpdateOwnerProfileErrors];
+
+export type UpdateOwnerProfileResponses = {
+    /**
+     * The request has succeeded.
+     */
+    200: OwnerProfile;
+};
+
+export type UpdateOwnerProfileResponse = UpdateOwnerProfileResponses[keyof UpdateOwnerProfileResponses];
 
 export type SetPublicBookingData = {
     body: PublicBookingCommand;

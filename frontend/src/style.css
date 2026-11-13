@@ -369,3 +369,23 @@ h3 {
   width: 1.25rem;
   height: 1.25rem;
 }
+
+.profile-editor {
+  display: grid;
+  gap: 0.75rem;
+  margin-block: 2rem;
+}
+
+.profile-editor textarea {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.6rem;
+  border: 1px solid #6a6576;
+  border-radius: 0.5rem;
+  font: inherit;
+  resize: vertical;
+}
+
+.profile-editor [aria-invalid='true'] {
+  border: 2px solid #9c2341;
+}
