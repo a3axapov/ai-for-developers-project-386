@@ -308,6 +308,65 @@ model PreparedBookingAttempt {
   state: "PREPARED";
 }
 
+@doc("Saved booking conditions and contacts with current time, status and version.")
+model BookingDetails {
+  id: string;
+  meetingTypeId: string;
+  ownerName: string;
+  ownerTimeZone: string;
+  title: string;
+  description: string;
+  durationMinutes: int32;
+  requiresApproval: boolean;
+  startsAt: offsetDateTime;
+  endsAt: offsetDateTime;
+  status: "CONFIRMED" | "PENDING" | "REJECTED" | "CANCELLED";
+  rejectionReason?: "APPROVAL_EXPIRED";
+  guestName: string;
+  guestEmail: string;
+  comment: string;
+  version: int64;
+  allowedActions: string[];
+}
+
+model SubmittedBookingAttempt {
+  state: "SUCCEEDED";
+  booking: BookingDetails;
+  resultUrl: string;
+}
+
+@get
+@route("/bookings/{accessToken}")
+@tag("Public")
+@operationId("getBookingResult")
+@doc("Read the current booking using its independent secret link. Unknown links return a neutral BOOKING_NOT_FOUND. Public booking settings do not restrict existing results.")
+op getBookingResult(@path accessToken: string):
+  | {
+      @header("Cache-Control") cacheControl: "no-store";
+      @body body: BookingDetails;
+    }
+  | PageNotFound;
+
+@post
+@route("/booking-attempts/{attemptId}/submit")
+@tag("Public")
+@operationId("submitBookingAttempt")
+@doc("Submit immutable prepared data with its Bearer secret. First creation returns 201, successful replay 200 with the current booking. Definite refusals are saved. No request body is accepted.")
+op submitBookingAttempt(
+  @path attemptId: string,
+  @header("Authorization") authorization?: string,
+):
+  | {
+      @statusCode statusCode: 200 | 201;
+      @header("Cache-Control") cacheControl: "no-store";
+      @body body: SubmittedBookingAttempt;
+    }
+  | OperationUnavailable
+  | PageNotFound
+  | StateConflict
+  | InvalidData
+  | MalformedRequest;
+
 @post
 @route("/public/{username}/booking-attempts")
 @tag("Public")

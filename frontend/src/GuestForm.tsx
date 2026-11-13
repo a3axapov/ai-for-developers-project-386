@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import {
   prepareBookingAttempt,
+  submitBookingAttempt,
   type PreparedBookingAttempt,
   type FieldError,
   type Slot,
@@ -20,6 +21,10 @@ export function GuestForm({
   contacts,
   onChange,
   onUnavailable,
+  onRefusal,
+  onSending,
+  onUnknown,
+  onDefiniteFailure,
 }: {
   username: string;
   meetingTypeId: string;
@@ -28,6 +33,10 @@ export function GuestForm({
   contacts: GuestContacts;
   onChange: (contacts: GuestContacts) => void;
   onUnavailable: (reason: 'not-found' | 'disabled') => void;
+  onRefusal: (message: string) => void;
+  onSending: (attempt: PreparedBookingAttempt) => void;
+  onUnknown: () => void;
+  onDefiniteFailure: (message: string) => void;
 }) {
   const [prepared, setPrepared] = useState<PreparedBookingAttempt>();
   const [pending, setPending] = useState(false);
@@ -81,8 +90,8 @@ export function GuestForm({
     >
       <h2>Ваши контакты</h2>
       <p>
-        Подготовка не бронирует и не удерживает время. Создание бронирования
-        пока недоступно.
+        Подготовка не бронирует и не удерживает время. После подготовки явно
+        отправьте запись.
       </p>
       {(['guestName', 'guestEmail', 'comment'] as const).map((field) => {
         const error = errors.find((error) => error.field === field);
@@ -125,9 +134,52 @@ export function GuestForm({
       {message && <p role="alert">{message}</p>}
       {pending && <p role="status">Подготовка попытки…</p>}
       {prepared && (
-        <p role="status">
-          Попытка подготовлена. Бронирование ещё не создано; время не занято.
-        </p>
+        <>
+          <p role="status">
+            Попытка подготовлена. Бронирование ещё не создано; время не занято.
+          </p>
+          <button
+            className="button"
+            type="button"
+            disabled={pending}
+            onClick={async () => {
+              if (pending) return;
+              setPending(true);
+              onSending(prepared);
+              try {
+                const result = await submitBookingAttempt({
+                  path: { attemptId: prepared.attemptId },
+                  headers: {
+                    Authorization: `Bearer ${prepared.attemptSecret}`,
+                  },
+                });
+                if (result.data) window.location.assign(result.data.resultUrl);
+                else if (
+                  result.response &&
+                  result.response.status >= 400 &&
+                  result.response.status < 500 &&
+                  result.error?.code
+                ) {
+                  if (result.error.code === 'PAGE_NOT_FOUND')
+                    onUnavailable('not-found');
+                  else if (result.error.code === 'BOOKING_DISABLED')
+                    onUnavailable('disabled');
+                  else if (result.response.status === 409)
+                    onRefusal(result.error.message);
+                  else onDefiniteFailure(result.error.message);
+                } else {
+                  onUnknown();
+                }
+              } catch {
+                onUnknown();
+              } finally {
+                setPending(false);
+              }
+            }}
+          >
+            Записаться
+          </button>
+        </>
       )}
       <button
         className="button"

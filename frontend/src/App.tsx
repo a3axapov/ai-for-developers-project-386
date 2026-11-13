@@ -1,5 +1,6 @@
 import { OwnerPage } from './OwnerPage';
 import { BookingPage } from './BookingPage';
+import { BookingResultPage } from './BookingResultPage';
 import { useEffect, useState } from 'react';
 
 const steps = [
@@ -119,6 +120,7 @@ export function App() {
     return () => window.removeEventListener('popstate', changed);
   }, []);
   const bookingPath = /^\/booking\/([^/]+)(?:\/([^/]+))?$/.exec(path);
+  const resultPath = /^\/bookings\/([^/]+)$/.exec(path);
 
   return (
     <div className="site-shell">
@@ -155,6 +157,11 @@ export function App() {
                 ? undefined
                 : decodeURIComponent(bookingPath[2])
             }
+          />
+        ) : resultPath ? (
+          <BookingResultPage
+            key={path}
+            accessToken={decodeURIComponent(resultPath[1])}
           />
         ) : path === '/admin' ? (
           <OwnerPage />

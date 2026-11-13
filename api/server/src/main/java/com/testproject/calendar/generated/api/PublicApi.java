@@ -6,12 +6,15 @@
 package com.testproject.calendar.generated.api;
 
 import com.testproject.calendar.generated.model.ApiError;
+import com.testproject.calendar.generated.model.BookingDetails;
 import com.testproject.calendar.generated.model.BookingEntry;
+import org.springframework.lang.Nullable;
 import com.testproject.calendar.generated.model.PrepareBookingAttemptCommand;
 import com.testproject.calendar.generated.model.PreparedBookingAttempt;
 import com.testproject.calendar.generated.model.PublicBookingPage;
 import com.testproject.calendar.generated.model.PublicMeetingTypePage;
 import com.testproject.calendar.generated.model.PublicSlots;
+import com.testproject.calendar.generated.model.SubmittedBookingAttempt;
 import org.springframework.http.ResponseEntity;
 
 import org.springframework.web.bind.annotation.*;
@@ -41,6 +44,25 @@ public interface PublicApi {
     )
     ResponseEntity<BookingEntry> getBookingEntry(
         
+    );
+
+
+    String PATH_GET_BOOKING_RESULT = "/api/bookings/{accessToken}";
+    /**
+     * GET /api/bookings/{accessToken}
+     * Read the current booking using its independent secret link. Unknown links return a neutral BOOKING_NOT_FOUND. Public booking settings do not restrict existing results.
+     *
+     * @param accessToken  (required)
+     * @return The request has succeeded. (status code 200)
+     *         or The server cannot find the requested resource. (status code 404)
+     */
+    @RequestMapping(
+        method = RequestMethod.GET,
+        value = PublicApi.PATH_GET_BOOKING_RESULT,
+        produces = { "application/json" }
+    )
+    ResponseEntity<BookingDetails> getBookingResult(
+         @PathVariable("accessToken") String accessToken
     );
 
 
@@ -128,6 +150,32 @@ public interface PublicApi {
     ResponseEntity<PreparedBookingAttempt> prepareBookingAttempt(
          @PathVariable("username") String username,
          @RequestBody PrepareBookingAttemptCommand prepareBookingAttemptCommand
+    );
+
+
+    String PATH_SUBMIT_BOOKING_ATTEMPT = "/api/booking-attempts/{attemptId}/submit";
+    /**
+     * POST /api/booking-attempts/{attemptId}/submit
+     * Submit immutable prepared data with its Bearer secret. First creation returns 201, successful replay 200 with the current booking. Definite refusals are saved. No request body is accepted.
+     *
+     * @param attemptId  (required)
+     * @param authorization  (optional)
+     * @return The request has succeeded. (status code 200)
+     *         or The request has succeeded and a new resource has been created as a result. (status code 201)
+     *         or The server could not understand the request due to invalid syntax. (status code 400)
+     *         or The server cannot find the requested resource. (status code 404)
+     *         or The request conflicts with the current state of the server. (status code 409)
+     *         or Client error (status code 410)
+     *         or Client error (status code 422)
+     */
+    @RequestMapping(
+        method = RequestMethod.POST,
+        value = PublicApi.PATH_SUBMIT_BOOKING_ATTEMPT,
+        produces = { "application/json" }
+    )
+    ResponseEntity<SubmittedBookingAttempt> submitBookingAttempt(
+         @PathVariable("attemptId") String attemptId,
+         @RequestHeader(value = "Authorization", required = false) @Nullable String authorization
     );
 
 }

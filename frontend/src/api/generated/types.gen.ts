@@ -11,6 +11,29 @@ export type ApiError = {
     fieldErrors?: Array<FieldError>;
 };
 
+/**
+ * Saved booking conditions and contacts with current time, status and version.
+ */
+export type BookingDetails = {
+    id: string;
+    meetingTypeId: string;
+    ownerName: string;
+    ownerTimeZone: string;
+    title: string;
+    description: string;
+    durationMinutes: number;
+    requiresApproval: boolean;
+    startsAt: string;
+    endsAt: string;
+    status: 'CONFIRMED' | 'PENDING' | 'REJECTED' | 'CANCELLED';
+    rejectionReason?: 'APPROVAL_EXPIRED';
+    guestName: string;
+    guestEmail: string;
+    comment: string;
+    version: number;
+    allowedActions: Array<string>;
+};
+
 export type BookingEntry = {
     bookingUrl: string;
 };
@@ -206,6 +229,12 @@ export type Slot = {
     endsAt: string;
 };
 
+export type SubmittedBookingAttempt = {
+    state: 'SUCCEEDED';
+    booking: BookingDetails;
+    resultUrl: string;
+};
+
 export type WorkingDay = {
     day: 'MONDAY' | 'TUESDAY' | 'WEDNESDAY' | 'THURSDAY' | 'FRIDAY' | 'SATURDAY' | 'SUNDAY';
     intervals: Array<WorkingInterval>;
@@ -215,6 +244,83 @@ export type WorkingInterval = {
     start: string;
     end: string;
 };
+
+export type SubmitBookingAttemptData = {
+    body?: never;
+    headers?: {
+        Authorization?: string;
+    };
+    path: {
+        attemptId: string;
+    };
+    query?: never;
+    url: '/api/booking-attempts/{attemptId}/submit';
+};
+
+export type SubmitBookingAttemptErrors = {
+    /**
+     * The server could not understand the request due to invalid syntax.
+     */
+    400: ApiError;
+    /**
+     * The server cannot find the requested resource.
+     */
+    404: ApiError;
+    /**
+     * The request conflicts with the current state of the server.
+     */
+    409: ApiError;
+    /**
+     * Client error
+     */
+    410: ApiError;
+    /**
+     * Client error
+     */
+    422: ApiError;
+};
+
+export type SubmitBookingAttemptError = SubmitBookingAttemptErrors[keyof SubmitBookingAttemptErrors];
+
+export type SubmitBookingAttemptResponses = {
+    /**
+     * The request has succeeded.
+     */
+    200: SubmittedBookingAttempt;
+    /**
+     * The request has succeeded and a new resource has been created as a result.
+     */
+    201: SubmittedBookingAttempt;
+};
+
+export type SubmitBookingAttemptResponse = SubmitBookingAttemptResponses[keyof SubmitBookingAttemptResponses];
+
+export type GetBookingResultData = {
+    body?: never;
+    path: {
+        accessToken: string;
+    };
+    query?: never;
+    url: '/api/bookings/{accessToken}';
+};
+
+export type GetBookingResultErrors = {
+    /**
+     * The server cannot find the requested resource.
+     */
+    404: ApiError;
+};
+
+export type GetBookingResultError = GetBookingResultErrors[keyof GetBookingResultErrors];
+
+export type GetBookingResultResponses = {
+    /**
+     * The request has succeeded.
+     */
+    200: BookingDetails;
+};
+
+export type GetBookingResultResponse = GetBookingResultResponses[keyof GetBookingResultResponses];
 
 export type GetHealthData = {
     body?: never;

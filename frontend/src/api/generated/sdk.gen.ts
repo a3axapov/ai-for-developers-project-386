@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { CreateMeetingTypeData, CreateMeetingTypeErrors, CreateMeetingTypeResponses, GetBookingEntryData, GetBookingEntryResponses, GetHealthData, GetHealthResponses, GetMeetingTypeData, GetMeetingTypeErrors, GetMeetingTypeResponses, GetOwnerOperationData, GetOwnerOperationErrors, GetOwnerOperationResponses, GetOwnerProfileData, GetOwnerProfileResponses, GetPublicBookingPageData, GetPublicBookingPageErrors, GetPublicBookingPageResponses, GetPublicMeetingTypeData, GetPublicMeetingTypeErrors, GetPublicMeetingTypeResponses, GetPublicSlotsData, GetPublicSlotsErrors, GetPublicSlotsResponses, ListMeetingTypesData, ListMeetingTypesResponses, PrepareBookingAttemptData, PrepareBookingAttemptErrors, PrepareBookingAttemptResponses, SetPublicBookingData, SetPublicBookingErrors, SetPublicBookingResponses, UpdateOwnerProfileData, UpdateOwnerProfileErrors, UpdateOwnerProfileResponses } from './types.gen';
+import type { CreateMeetingTypeData, CreateMeetingTypeErrors, CreateMeetingTypeResponses, GetBookingEntryData, GetBookingEntryResponses, GetBookingResultData, GetBookingResultErrors, GetBookingResultResponses, GetHealthData, GetHealthResponses, GetMeetingTypeData, GetMeetingTypeErrors, GetMeetingTypeResponses, GetOwnerOperationData, GetOwnerOperationErrors, GetOwnerOperationResponses, GetOwnerProfileData, GetOwnerProfileResponses, GetPublicBookingPageData, GetPublicBookingPageErrors, GetPublicBookingPageResponses, GetPublicMeetingTypeData, GetPublicMeetingTypeErrors, GetPublicMeetingTypeResponses, GetPublicSlotsData, GetPublicSlotsErrors, GetPublicSlotsResponses, ListMeetingTypesData, ListMeetingTypesResponses, PrepareBookingAttemptData, PrepareBookingAttemptErrors, PrepareBookingAttemptResponses, SetPublicBookingData, SetPublicBookingErrors, SetPublicBookingResponses, SubmitBookingAttemptData, SubmitBookingAttemptErrors, SubmitBookingAttemptResponses, UpdateOwnerProfileData, UpdateOwnerProfileErrors, UpdateOwnerProfileResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -17,6 +17,16 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
      */
     meta?: keyof ClientMeta extends never ? Record<string, unknown> : ClientMeta;
 };
+
+/**
+ * Submit immutable prepared data with its Bearer secret. First creation returns 201, successful replay 200 with the current booking. Definite refusals are saved. No request body is accepted.
+ */
+export const submitBookingAttempt = <ThrowOnError extends boolean = false>(options: Options<SubmitBookingAttemptData, ThrowOnError>): RequestResult<SubmitBookingAttemptResponses, SubmitBookingAttemptErrors, ThrowOnError> => (options.client ?? client).post<SubmitBookingAttemptResponses, SubmitBookingAttemptErrors, ThrowOnError>({ url: '/api/booking-attempts/{attemptId}/submit', ...options });
+
+/**
+ * Read the current booking using its independent secret link. Unknown links return a neutral BOOKING_NOT_FOUND. Public booking settings do not restrict existing results.
+ */
+export const getBookingResult = <ThrowOnError extends boolean = false>(options: Options<GetBookingResultData, ThrowOnError>): RequestResult<GetBookingResultResponses, GetBookingResultErrors, ThrowOnError> => (options.client ?? client).get<GetBookingResultResponses, GetBookingResultErrors, ThrowOnError>({ url: '/api/bookings/{accessToken}', ...options });
 
 /**
  * Check that the application is running.

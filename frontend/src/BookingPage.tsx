@@ -8,6 +8,7 @@ import {
   type PublicBookingPage,
   type PublicMeetingTypePage,
   type PublicMeetingType,
+  type PreparedBookingAttempt,
 } from './api/generated';
 
 type PageState =
@@ -40,6 +41,11 @@ export function BookingPage({
 }) {
   const [state, setState] = useState<PageState>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  const [refusal, setRefusal] = useState('');
+  const [submission, setSubmission] = useState<{
+    attempt: PreparedBookingAttempt;
+    status: 'sending' | 'unknown';
+  }>();
   const [contacts, setContacts] = useState<GuestContacts>({
     guestName: '',
     guestEmail: '',
@@ -50,6 +56,7 @@ export function BookingPage({
       ? state.page.meetingType
       : undefined;
   const unavailable = useCallback((reason: 'not-found' | 'disabled') => {
+    setSubmission(undefined);
     setState((previous) => {
       if (reason === 'not-found') return { status: 'not-found' };
       if (previous.status !== 'ready') return previous;
@@ -105,6 +112,34 @@ export function BookingPage({
     return () => controller.abort();
   }, [username, meetingTypeId, attempt]);
 
+  if (submission)
+    return (
+      <section className="placeholder">
+        <h1>Отправка бронирования</h1>
+        {submission.status === 'sending' ? (
+          <p role="status">Отправка записи…</p>
+        ) : (
+          <p role="alert">
+            Исход отправки неизвестен. Новая запись заблокирована, чтобы не
+            создать дубликат. Это не подтверждение и не отказ. Сведения попытки
+            сохранены в памяти этой страницы; не закрывайте её.
+          </p>
+        )}
+        <label>
+          Ваше имя
+          <input readOnly value={contacts.guestName} />
+        </label>
+        <label>
+          Email
+          <input readOnly value={contacts.guestEmail} />
+        </label>
+        <label>
+          Комментарий
+          <textarea readOnly value={contacts.comment} />
+        </label>
+      </section>
+    );
+
   return (
     <section
       className="placeholder"
@@ -141,6 +176,7 @@ export function BookingPage({
             : 'Страница бронирования'}
       </h1>
       {state.status === 'loading' && <p role="status">Загрузка страницы…</p>}
+      {refusal && <p role="alert">{refusal}</p>}
       {state.status === 'ready' &&
         (state.page.state === 'BOOKING_DISABLED' ? (
           <>
@@ -162,7 +198,7 @@ export function BookingPage({
               <Conditions item={state.page.meetingType} />
             </article>
             <SlotCalendar
-              key={`${username}/${meetingTypeId}`}
+              key={`${username}/${meetingTypeId}/${attempt}`}
               username={username!}
               id={meetingTypeId!}
               onUnavailable={unavailable}
@@ -176,6 +212,27 @@ export function BookingPage({
                   contacts={contacts}
                   onChange={setContacts}
                   onUnavailable={unavailable}
+                  onRefusal={(message) => {
+                    setSubmission(undefined);
+                    setRefusal(message);
+                    setState({ status: 'loading' });
+                    setAttempt((previous) => previous + 1);
+                  }}
+                  onSending={(attempt) =>
+                    setSubmission({ attempt, status: 'sending' })
+                  }
+                  onUnknown={() =>
+                    setSubmission(
+                      (previous) =>
+                        previous && { ...previous, status: 'unknown' },
+                    )
+                  }
+                  onDefiniteFailure={(message) => {
+                    setSubmission(undefined);
+                    setRefusal(message);
+                    setState({ status: 'loading' });
+                    setAttempt((previous) => previous + 1);
+                  }}
                 />
               )}
             />

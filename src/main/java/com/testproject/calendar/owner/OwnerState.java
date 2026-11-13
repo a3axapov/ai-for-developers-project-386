@@ -3,6 +3,8 @@ package com.testproject.calendar.owner;
 import com.testproject.calendar.api.ApiFailure;
 import com.testproject.calendar.generated.model.PrepareBookingAttemptCommand;
 import com.testproject.calendar.generated.model.PreparedBookingAttempt;
+import com.testproject.calendar.generated.model.BookingDetails;
+import com.testproject.calendar.generated.model.SubmittedBookingAttempt;
 import com.testproject.calendar.availability.SlotAvailability;
 import com.testproject.calendar.generated.model.PublicSlots;
 import com.testproject.calendar.generated.model.ApiError;
@@ -35,6 +37,8 @@ import org.springframework.stereotype.Service;
 public class OwnerState {
 
     private final InitialCalendarSettings initial;
+    private final SlotAvailability availability;
+    private final java.time.Clock clock;
     private boolean bookingEnabled;
     private String name;
     private String username;
@@ -43,6 +47,8 @@ public class OwnerState {
     private final Map<String, MeetingType> meetingTypes = new LinkedHashMap<>();
     private final java.security.SecureRandom random = new java.security.SecureRandom();
     private final Map<String, PreparedAttempt> attempts = new HashMap<>();
+    private final Map<String, BookingDetails> bookings = new HashMap<>();
+    private final Map<String, BookingDetails> resultLinks = new HashMap<>();
 
     // Only immutable values, never the mutable transport command. No generated toString containing secrets.
     private static final class PreparedAttempt {
@@ -54,6 +60,8 @@ public class OwnerState {
         private final String guestName;
         private final String guestEmail;
         private final String comment;
+        private SubmittedBookingAttempt success;
+        private ApiFailure failure;
 
         private PreparedAttempt(String secret, String username, PrepareBookingAttemptCommand command) {
             this.secret = secret;
@@ -65,6 +73,119 @@ public class OwnerState {
             this.guestEmail = command.getGuestEmail();
             this.comment = command.getComment();
         }
+    }
+
+    public record Submission(boolean created, SubmittedBookingAttempt result) { }
+
+    public synchronized Submission submitAttempt(String id, String authorization) {
+        var attempt = attempts.get(id);
+        if (attempt == null || authorization == null || !MessageDigest.isEqual(
+                ("Bearer " + attempt.secret).getBytes(StandardCharsets.UTF_8),
+                authorization.getBytes(StandardCharsets.UTF_8))) {
+            throw new ApiFailure(410, new ApiError("ATTEMPT_UNAVAILABLE",
+                    "Попытка недоступна. Возможен сброс данных."));
+        }
+        if (attempt.success != null) {
+            refreshBookings();
+            return new Submission(false, submissionResult(attempt));
+        }
+        if (attempt.failure != null) {
+            throw attempt.failure;
+        }
+        try {
+            return createBooking(attempt);
+        } catch (ApiFailure failure) {
+            attempt.failure = failure;
+            throw failure;
+        }
+    }
+
+    private Submission createBooking(PreparedAttempt attempt) {
+        requireUsername(attempt.username);
+        var type = meetingType(attempt.meetingTypeId);
+        if (!bookingEnabled) {
+            throw new ApiFailure(409, new ApiError("BOOKING_DISABLED", "Запись временно недоступна"));
+        }
+        if (type.getArchived()) {
+            throw new ApiFailure(409, new ApiError("TYPE_ARCHIVED", "Запись на этот тип встречи прекращена"));
+        }
+        if (!conditionsToken(type).equals(attempt.conditionsToken)) {
+            throw new ApiFailure(409, new ApiError("CONDITIONS_CHANGED",
+                    "Условия встречи изменились. Выберите время заново."));
+        }
+        var slots = availability.slots(type, profile().getTimeZone(), conditionsToken(type));
+        var start = attempt.startsAt.toInstant();
+        var end = start.plusSeconds(type.getDurationMinutes() * 60L);
+        if (start.isBefore(slots.getWindowStart().toInstant()) || end.isAfter(slots.getWindowEnd().toInstant())) {
+            throw new ApiFailure(409, new ApiError("OUTSIDE_BOOKING_WINDOW",
+                    "Окно записи изменилось. Выберите время заново."));
+        }
+        if (slots.getItems().stream().noneMatch(slot -> slot.getStartsAt().toInstant().equals(start))) {
+            throw new ApiFailure(409, new ApiError("SLOT_UNAVAILABLE",
+                    "Время недоступно. Выберите время заново."));
+        }
+        if (occupied(start, end)) {
+            throw new ApiFailure(409, new ApiError("TIME_CONFLICT", "Время уже занято. Выберите другое время."));
+        }
+        var booking = new BookingDetails(randomToken(), type.getId(), name, profile().getTimeZone(),
+                type.getTitle(), type.getDescription(), type.getDurationMinutes(), type.getRequiresApproval(),
+                attempt.startsAt, attempt.startsAt.plusMinutes(type.getDurationMinutes()),
+                type.getRequiresApproval() ? BookingDetails.StatusEnum.PENDING : BookingDetails.StatusEnum.CONFIRMED,
+                attempt.guestName, attempt.guestEmail, attempt.comment, 1L, List.of());
+        var token = randomToken();
+        while (resultLinks.containsKey(token)) {
+            token = randomToken();
+        }
+        attempt.success = new SubmittedBookingAttempt(SubmittedBookingAttempt.StateEnum.SUCCEEDED,
+                booking, "/bookings/" + token);
+        bookings.put(booking.getId(), booking);
+        resultLinks.put(token, booking);
+        return new Submission(true, submissionResult(attempt));
+    }
+
+    private SubmittedBookingAttempt submissionResult(PreparedAttempt attempt) {
+        return new SubmittedBookingAttempt(SubmittedBookingAttempt.StateEnum.SUCCEEDED,
+                bookingSnapshot(attempt.success.getBooking()), attempt.success.getResultUrl());
+    }
+
+    // Do not expose state that another request can mutate while Spring serializes this response.
+    private BookingDetails bookingSnapshot(BookingDetails booking) {
+        return new BookingDetails(booking.getId(), booking.getMeetingTypeId(), booking.getOwnerName(),
+                booking.getOwnerTimeZone(), booking.getTitle(), booking.getDescription(), booking.getDurationMinutes(),
+                booking.getRequiresApproval(), booking.getStartsAt(), booking.getEndsAt(), booking.getStatus(),
+                booking.getGuestName(), booking.getGuestEmail(), booking.getComment(), booking.getVersion(),
+                List.copyOf(booking.getAllowedActions())).rejectionReason(booking.getRejectionReason());
+    }
+
+    public synchronized BookingDetails bookingResult(String token) {
+        var booking = resultLinks.get(token);
+        if (booking == null) {
+            throw new ApiFailure(404, new ApiError("BOOKING_NOT_FOUND", "Бронирование не найдено"));
+        }
+        refreshBookings();
+        return bookingSnapshot(booking);
+    }
+
+    private void refreshBookings() {
+        var now = clock.instant();
+        for (var booking : bookings.values()) {
+            booking.setOwnerName(name);
+            booking.setOwnerTimeZone(profile().getTimeZone());
+            if (booking.getStatus() == BookingDetails.StatusEnum.PENDING
+                    && !now.isBefore(booking.getStartsAt().toInstant())) {
+                booking.setStatus(BookingDetails.StatusEnum.REJECTED);
+                booking.setRejectionReason(BookingDetails.RejectionReasonEnum.APPROVAL_EXPIRED);
+                booking.setVersion(booking.getVersion() + 1);
+            }
+        }
+    }
+
+    private boolean occupied(java.time.Instant start, java.time.Instant end) {
+        refreshBookings();
+        return bookings.values().stream().anyMatch(booking ->
+                (booking.getStatus() == BookingDetails.StatusEnum.PENDING
+                || booking.getStatus() == BookingDetails.StatusEnum.CONFIRMED)
+                && start.isBefore(booking.getEndsAt().toInstant()) && booking.getStartsAt().toInstant().isBefore(end));
     }
 
     public synchronized PreparedBookingAttempt prepareAttempt(String requestedUsername,
@@ -161,8 +282,10 @@ public class OwnerState {
     }
     private record MalformedCommand(String path, String body) { }
 
-    public OwnerState(InitialCalendarSettings initial) {
+    public OwnerState(InitialCalendarSettings initial, SlotAvailability availability, java.time.Clock clock) {
         this.initial = initial;
+        this.availability = availability;
+        this.clock = clock;
         bookingEnabled = initial.bookingEnabled();
         name = initial.name();
         username = initial.username();
@@ -290,7 +413,10 @@ public class OwnerState {
         if (type.getArchived()) {
             throw new ApiFailure(409, new ApiError("TYPE_ARCHIVED", "Запись на этот тип встречи прекращена"));
         }
-        return availability.slots(type, profile().getTimeZone(), conditionsToken(type));
+        var slots = availability.slots(type, profile().getTimeZone(), conditionsToken(type));
+        slots.setItems(slots.getItems().stream().filter(slot -> !occupied(
+                slot.getStartsAt().toInstant(), slot.getEndsAt().toInstant())).toList());
+        return slots;
     }
 
     private void requireUsername(String requestedUsername) {

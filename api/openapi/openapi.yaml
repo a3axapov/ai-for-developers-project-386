@@ -6,6 +6,112 @@ tags:
   - name: Owner
   - name: Public
 paths:
+  /api/booking-attempts/{attemptId}/submit:
+    post:
+      operationId: submitBookingAttempt
+      description: Submit immutable prepared data with its Bearer secret. First creation returns 201, successful replay 200 with the current booking. Definite refusals are saved. No request body is accepted.
+      parameters:
+        - name: attemptId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: Authorization
+          in: header
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          headers:
+            Cache-Control:
+              required: true
+              schema:
+                type: string
+                enum:
+                  - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmittedBookingAttempt'
+        '201':
+          description: The request has succeeded and a new resource has been created as a result.
+          headers:
+            Cache-Control:
+              required: true
+              schema:
+                type: string
+                enum:
+                  - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmittedBookingAttempt'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: The request conflicts with the current state of the server.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '410':
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      tags:
+        - Public
+  /api/bookings/{accessToken}:
+    get:
+      operationId: getBookingResult
+      description: Read the current booking using its independent secret link. Unknown links return a neutral BOOKING_NOT_FOUND. Public booking settings do not restrict existing results.
+      parameters:
+        - name: accessToken
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          headers:
+            Cache-Control:
+              required: true
+              schema:
+                type: string
+                enum:
+                  - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingDetails'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      tags:
+        - Public
   /api/health:
     get:
       operationId: getHealth
@@ -476,6 +582,74 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/FieldError'
+    BookingDetails:
+      type: object
+      required:
+        - id
+        - meetingTypeId
+        - ownerName
+        - ownerTimeZone
+        - title
+        - description
+        - durationMinutes
+        - requiresApproval
+        - startsAt
+        - endsAt
+        - status
+        - guestName
+        - guestEmail
+        - comment
+        - version
+        - allowedActions
+      properties:
+        id:
+          type: string
+        meetingTypeId:
+          type: string
+        ownerName:
+          type: string
+        ownerTimeZone:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        durationMinutes:
+          type: integer
+          format: int32
+        requiresApproval:
+          type: boolean
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum:
+            - CONFIRMED
+            - PENDING
+            - REJECTED
+            - CANCELLED
+        rejectionReason:
+          type: string
+          enum:
+            - APPROVAL_EXPIRED
+        guestName:
+          type: string
+        guestEmail:
+          type: string
+        comment:
+          type: string
+        version:
+          type: integer
+          format: int64
+        allowedActions:
+          type: array
+          items:
+            type: string
+      description: Saved booking conditions and contacts with current time, status and version.
     BookingEntry:
       type: object
       required:
@@ -819,6 +993,21 @@ components:
           type: string
           format: date-time
           description: Start plus the type's elapsed duration, covered by continuous working time without crossing breaks or bridging repeated working sections.
+    SubmittedBookingAttempt:
+      type: object
+      required:
+        - state
+        - booking
+        - resultUrl
+      properties:
+        state:
+          type: string
+          enum:
+            - SUCCEEDED
+        booking:
+          $ref: '#/components/schemas/BookingDetails'
+        resultUrl:
+          type: string
     WorkingDay:
       type: object
       required:
