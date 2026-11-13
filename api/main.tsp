@@ -335,6 +335,29 @@ model SubmittedBookingAttempt {
   resultUrl: string;
 }
 
+@doc("Read-only saved attempt outcome. PREPARED has no booking; SUCCEEDED includes booking and resultUrl; FAILED includes the saved definite error.")
+model BookingAttemptResult {
+  state: "PREPARED" | "SUCCEEDED" | "FAILED";
+  booking?: BookingDetails;
+  resultUrl?: string;
+  error?: ApiError;
+}
+
+@get
+@route("/booking-attempts/{attemptId}")
+@tag("Public")
+@operationId("getBookingAttempt")
+@doc("Safely read an attempt with its original Bearer secret, without submitting it. Missing attempts and invalid secrets give the same neutral 410; saved outcomes precede public booking restrictions.")
+op getBookingAttempt(
+  @path attemptId: string,
+  @header("Authorization") authorization?: string,
+):
+  | {
+      @header("Cache-Control") cacheControl: "no-store";
+      @body body: BookingAttemptResult;
+    }
+  | OperationUnavailable;
+
 @get
 @route("/bookings/{accessToken}")
 @tag("Public")

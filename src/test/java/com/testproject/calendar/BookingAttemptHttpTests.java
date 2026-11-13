@@ -99,7 +99,12 @@ class BookingAttemptHttpTests {
                 for (var method : java.util.List.of("GET", "PUT", "PATCH", "DELETE")) {
                     var denied = send(app, method, "/api/booking-attempts/" + id,
                             method.equals("GET") ? null : json.writeValueAsString(command));
-                    assertTrue(denied.statusCode() == 404 || denied.statusCode() == 405, denied.body());
+                    if (method.equals("GET")) {
+                        assertEquals(410, denied.statusCode(), denied.body());
+                        assertEquals("ATTEMPT_UNAVAILABLE", json.readTree(denied.body()).get("code").asString());
+                    } else {
+                        assertEquals(405, denied.statusCode(), denied.body());
+                    }
                     assertFalse(denied.body().contains("attemptSecret"));
                     assertFalse(denied.body().contains(email));
                 }

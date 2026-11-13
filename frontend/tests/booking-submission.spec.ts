@@ -159,58 +159,80 @@ for (const approval of [false, true]) {
   });
 }
 
-test('конфликт настоящей записи снимает выбор, обновляет календарь и сохраняет контакты', async ({
-  page,
-  request,
-}) => {
-  await seed(request);
-  const preparedResponse = page.waitForResponse((response) =>
-    response.url().endsWith('/booking-attempts'),
-  );
-  await fillAndPrepare(page);
-  const preparedRequest = (await preparedResponse).request().postDataJSON();
-  const competitor = await request.post('/api/public/anna-1/booking-attempts', {
-    data: preparedRequest,
+for (const loseRefusal of [false, true]) {
+  test(`конфликт настоящей записи снимает выбор, обновляет календарь и сохраняет контакты; потеря отказа: ${loseRefusal}`, async ({
+    page,
+    request,
+  }) => {
+    await seed(request);
+    const preparedResponse = page.waitForResponse((response) =>
+      response.url().endsWith('/booking-attempts'),
+    );
+    await fillAndPrepare(page);
+    const preparedRequest = (await preparedResponse).request().postDataJSON();
+    const competitor = await request.post(
+      '/api/public/anna-1/booking-attempts',
+      {
+        data: preparedRequest,
+      },
+    );
+    expect(competitor.status()).toBe(201);
+    const credentials = await competitor.json();
+    expect(
+      (
+        await request.post(
+          `/api/booking-attempts/${credentials.attemptId}/submit`,
+          {
+            headers: { Authorization: `Bearer ${credentials.attemptSecret}` },
+          },
+        )
+      ).status(),
+    ).toBe(201);
+    if (loseRefusal) {
+      await page.route('**/booking-attempts/*/submit', async (route) => {
+        const response = await route.fetch();
+        expect(response.status()).toBe(409);
+        expect((await response.json()).code).toBe('TIME_CONFLICT');
+        await route.abort('connectionreset');
+      });
+    }
+    await page.getByRole('button', { name: 'Записаться', exact: true }).click();
+    if (loseRefusal) {
+      await expect(page.getByRole('alert')).toContainText(
+        'Исход отправки неизвестен',
+      );
+      await page.unroute('**/booking-attempts/*/submit');
+      await page
+        .getByRole('button', { name: 'Выяснить результат записи' })
+        .click();
+    }
+    await expect(page.getByRole('alert')).toContainText('Время уже занято');
+    await expect(
+      page.getByRole('button', { name: 'Записаться', exact: true }),
+    ).toHaveCount(0);
+    await page.getByRole('button', { name: '02.11.2026', exact: true }).click();
+    await expect(
+      page.getByRole('button', {
+        name: '09:00 UTC+03:00 — 09:30 UTC+03:00',
+        exact: true,
+      }),
+    ).toHaveCount(0);
+    await page
+      .getByRole('button', {
+        name: '09:30 UTC+03:00 — 10:00 UTC+03:00',
+        exact: true,
+      })
+      .click();
+    await expect(page.getByLabel('Ваше имя')).toHaveValue('  Анна   李  ');
+    await expect(page.getByLabel('Email')).toHaveValue('guest@example.com');
+    await expect(page.getByLabel('Комментарий')).toHaveValue(
+      'Первый вопрос\nВторая строка',
+    );
+    await page.getByRole('button', { name: 'Подготовить попытку' }).click();
+    await page.getByRole('button', { name: 'Записаться', exact: true }).click();
+    await expect(page.getByText('Подтверждено', { exact: true })).toBeVisible();
   });
-  expect(competitor.status()).toBe(201);
-  const credentials = await competitor.json();
-  expect(
-    (
-      await request.post(
-        `/api/booking-attempts/${credentials.attemptId}/submit`,
-        {
-          headers: { Authorization: `Bearer ${credentials.attemptSecret}` },
-        },
-      )
-    ).status(),
-  ).toBe(201);
-  await page.getByRole('button', { name: 'Записаться', exact: true }).click();
-  await expect(page.getByRole('alert')).toContainText('Время уже занято');
-  await expect(
-    page.getByRole('button', { name: 'Записаться', exact: true }),
-  ).toHaveCount(0);
-  await page.getByRole('button', { name: '02.11.2026', exact: true }).click();
-  await expect(
-    page.getByRole('button', {
-      name: '09:00 UTC+03:00 — 09:30 UTC+03:00',
-      exact: true,
-    }),
-  ).toHaveCount(0);
-  await page
-    .getByRole('button', {
-      name: '09:30 UTC+03:00 — 10:00 UTC+03:00',
-      exact: true,
-    })
-    .click();
-  await expect(page.getByLabel('Ваше имя')).toHaveValue('  Анна   李  ');
-  await expect(page.getByLabel('Email')).toHaveValue('guest@example.com');
-  await expect(page.getByLabel('Комментарий')).toHaveValue(
-    'Первый вопрос\nВторая строка',
-  );
-  await page.getByRole('button', { name: 'Подготовить попытку' }).click();
-  await page.getByRole('button', { name: 'Записаться', exact: true }).click();
-  await expect(page.getByText('Подтверждено', { exact: true })).toBeVisible();
-});
+}
 
 test('потеря настоящего ответа отправки не объявляет успех и блокирует изменённую новую попытку', async ({
   page,
@@ -285,4 +307,229 @@ test('потеря настоящего ответа отправки не об�
   });
   expect(replay.status()).toBe(200);
   expect((await replay.json()).booking.id).toBe(savedResult?.booking.id);
+  expect(
+    (
+      await request.put('/api/owner/profile', {
+        headers: { 'Idempotency-Key': 'rename-after-loss' },
+        data: {
+          name: 'Новое имя',
+          username: 'changed-owner',
+          expectedVersion: 2,
+        },
+      })
+    ).status(),
+  ).toBe(200);
+  expect(
+    (
+      await request.put('/api/owner/public-booking', {
+        headers: { 'Idempotency-Key': 'disable-after-loss' },
+        data: { enabled: false, expectedVersion: 3 },
+      })
+    ).status(),
+  ).toBe(200);
+  await expect(page.getByRole('alert')).toContainText(
+    'Не удалось узнать результат записи',
+  );
+  await page.route('**/api/booking-attempts/*', async (route) => {
+    expect((await route.fetch()).status()).toBe(200);
+    await route.abort('connectionreset');
+  });
+  await page.getByRole('button', { name: 'Выяснить результат записи' }).click();
+  await expect(page.getByRole('alert')).toContainText(
+    'Исход отправки неизвестен',
+  );
+  await expect(page.getByLabel('Email')).not.toBeEditable();
+  expect(prepares).toBe(0);
+  await page.unroute('**/api/booking-attempts/*');
+  await page.getByRole('button', { name: 'Выяснить результат записи' }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(savedResult!.resultUrl);
+  await expect(page.getByText('Подтверждено', { exact: true })).toBeVisible();
+  await expect(page.getByText('Новое имя', { exact: true })).toBeVisible();
+  expect(prepares).toBe(0);
 });
+
+test('неотправленный запрос выясняется как PREPARED и повторяется только той же попыткой', async ({
+  page,
+  request,
+}) => {
+  await seed(request);
+  await fillAndPrepare(page);
+  let originalUrl = '';
+  let originalSecret = '';
+  let submits = 0;
+  await page.route('**/booking-attempts/*/submit', async (route) => {
+    submits++;
+    originalUrl = route.request().url();
+    originalSecret = route.request().headers().authorization;
+    await route.abort('connectionreset');
+  });
+  await page.getByRole('button', { name: 'Записаться', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText(
+    'Исход отправки неизвестен',
+  );
+  await page.unroute('**/booking-attempts/*/submit');
+  await page.getByRole('button', { name: 'Выяснить результат записи' }).click();
+  await expect(
+    page.getByText(
+      'Бронирование ещё не создано. Можно повторить отправку той же попытки.',
+    ),
+  ).toBeVisible();
+  await expect(page.getByLabel('Email')).not.toBeEditable();
+  expect(submits).toBe(1);
+  const response = page.waitForResponse(
+    (response) => response.url() === originalUrl,
+  );
+  await page
+    .getByRole('button', { name: 'Повторить отправку той же попытки' })
+    .click();
+  const sent = await response;
+  expect(sent.status()).toBe(201);
+  expect(sent.request().headers().authorization).toBe(originalSecret);
+  await expect(page.getByText('Подтверждено', { exact: true })).toBeVisible();
+  const replay = await request.post(originalUrl, {
+    headers: { Authorization: originalSecret },
+  });
+  expect(replay.status()).toBe(200);
+  await expect(page).toHaveURL((await replay.json()).resultUrl);
+});
+
+for (const retryPrepared of [false, true]) {
+  test(`сброс настоящего сервера требует осознанной новой записи; повтор отправки: ${retryPrepared}`, async ({
+    page,
+    request,
+    restartServer,
+  }) => {
+    await seed(request);
+    await fillAndPrepare(page);
+    let prepares = 0;
+    let submits = 0;
+    page.on('request', (request) => {
+      if (request.url().endsWith('/booking-attempts')) prepares++;
+      if (request.url().endsWith('/submit')) submits++;
+    });
+    await page.route('**/booking-attempts/*/submit', async (route) => {
+      if (!retryPrepared) expect((await route.fetch()).status()).toBe(201);
+      await route.abort('connectionreset');
+    });
+    await page.getByRole('button', { name: 'Записаться', exact: true }).click();
+    await expect(page.getByRole('alert')).toContainText(
+      'Исход отправки неизвестен',
+    );
+    await page.unroute('**/booking-attempts/*/submit');
+    if (retryPrepared) {
+      await page
+        .getByRole('button', { name: 'Выяснить результат записи' })
+        .click();
+      await expect(
+        page.getByRole('button', { name: 'Повторить отправку той же попытки' }),
+      ).toBeVisible();
+    }
+    await restartServer();
+    await seed(request);
+    await page
+      .getByRole('button', {
+        name: retryPrepared
+          ? 'Повторить отправку той же попытки'
+          : 'Выяснить результат записи',
+      })
+      .click();
+    await expect(page.getByRole('alert')).toContainText(
+      'Возможен сброс данных',
+    );
+    await expect(page.getByLabel('Email')).toHaveValue('guest@example.com');
+    await expect(page.getByLabel('Email')).not.toBeEditable();
+    await expect(
+      page.getByRole('button', { name: 'Подготовить попытку' }),
+    ).toHaveCount(0);
+    expect(prepares).toBe(0);
+    expect(submits).toBe(retryPrepared ? 2 : 1);
+    await page.getByRole('button', { name: 'Начать новую запись' }).click();
+    await page.getByRole('button', { name: '02.11.2026', exact: true }).click();
+    await page
+      .getByRole('button', {
+        name: '09:00 UTC+03:00 — 09:30 UTC+03:00',
+        exact: true,
+      })
+      .click();
+    await expect(page.getByLabel('Ваше имя')).toHaveValue('  Анна   李  ');
+    await expect(page.getByLabel('Email')).toHaveValue('guest@example.com');
+    expect(prepares).toBe(0);
+    await page.getByRole('button', { name: 'Подготовить попытку' }).click();
+    await page.getByRole('button', { name: 'Записаться', exact: true }).click();
+    await expect(page.getByText('Подтверждено', { exact: true })).toBeVisible();
+    expect(prepares).toBe(1);
+    expect(submits).toBe(retryPrepared ? 3 : 2);
+  });
+}
+
+for (const changed of ['disabled', 'username']) {
+  test(`изменение ${changed} после подготовки блокирует старую отправку без потери контактов`, async ({
+    page,
+    request,
+  }) => {
+    await seed(request);
+    await fillAndPrepare(page);
+    if (changed === 'disabled') {
+      expect(
+        (
+          await request.put('/api/owner/public-booking', {
+            headers: { 'Idempotency-Key': 'close' },
+            data: { enabled: false, expectedVersion: 2 },
+          })
+        ).status(),
+      ).toBe(200);
+    } else {
+      expect(
+        (
+          await request.put('/api/owner/profile', {
+            headers: { 'Idempotency-Key': 'rename' },
+            data: {
+              name: 'Новое имя',
+              username: 'changed-owner',
+              expectedVersion: 2,
+            },
+          })
+        ).status(),
+      ).toBe(200);
+    }
+    await page.getByRole('button', { name: 'Записаться', exact: true }).click();
+    await expect(
+      page.getByRole('button', { name: 'Записаться', exact: true }),
+    ).toHaveCount(0);
+    if (changed === 'username') {
+      await expect(
+        page.getByRole('heading', { name: 'Страница не найдена' }),
+      ).toBeVisible();
+      await expect(page).toHaveURL('/booking/anna-1/Consult');
+      return;
+    }
+    await expect(page.getByRole('alert')).toHaveText(
+      'Запись временно недоступна',
+    );
+    expect(
+      (
+        await request.put('/api/owner/public-booking', {
+          headers: { 'Idempotency-Key': 'reopen' },
+          data: { enabled: true, expectedVersion: 3 },
+        })
+      ).status(),
+    ).toBe(200);
+    await page.getByRole('button', { name: 'Обновить доступность' }).click();
+    await page.getByRole('button', { name: '02.11.2026', exact: true }).click();
+    await page
+      .getByRole('button', {
+        name: '09:00 UTC+03:00 — 09:30 UTC+03:00',
+        exact: true,
+      })
+      .click();
+    await expect(page.getByLabel('Email')).toHaveValue('guest@example.com');
+    await expect(page.getByLabel('Ваше имя')).toHaveValue('  Анна   李  ');
+    await expect(page.getByLabel('Комментарий')).toHaveValue(
+      'Первый вопрос\nВторая строка',
+    );
+    await page.getByRole('button', { name: 'Подготовить попытку' }).click();
+    await page.getByRole('button', { name: 'Записаться', exact: true }).click();
+    await expect(page.getByText('Подтверждено', { exact: true })).toBeVisible();
+  });
+}

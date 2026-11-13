@@ -27,6 +27,164 @@ import tools.jackson.databind.json.JsonMapper;
 class BookingSubmissionHttpTests {
     private final JsonMapper json = JsonMapper.builder().build();
 
+    @Test
+    void readsPreparedAttemptWithoutBookingOrConsumingIt() throws Exception {
+        try (var app = start(new MutableClock())) {
+            seed(app, "Consult", false, 30);
+            var attempt = prepare(app, "Consult", "2026-11-02T09:00:00+03:00");
+            var before = get(app, "/api/public/owner/meeting-types/Consult/slots");
+            for (int index = 0; index < 2; index++) {
+                var response = query(app, attempt);
+                assertEquals(200, response.statusCode(), response.body());
+                assertEquals("no-store", response.headers().firstValue("Cache-Control").orElseThrow());
+                assertEquals(json.readTree("{\"state\":\"PREPARED\"}"), json.readTree(response.body()));
+                assertEquals(before, get(app, "/api/public/owner/meeting-types/Consult/slots"));
+            }
+            assertEquals(201, submit(app, attempt).statusCode());
+        }
+    }
+
+    private HttpResponse<String> query(ConfigurableApplicationContext app, JsonNode attempt) throws Exception {
+        return send(app, "GET", "/api/booking-attempts/" + attempt.get("attemptId").asString(), null,
+                "Bearer " + attempt.get("attemptSecret").asString());
+    }
+
+    @Test
+    void queryingPreparedDoesNotEvaluateNewBookingRestrictionsOrSaveARefusal() throws Exception {
+        try (var app = start(new MutableClock())) {
+            seed(app, "Consult", false, 30);
+            var attempt = prepare(app, "Consult", "2026-11-02T09:00:00+03:00");
+            assertEquals(200, send(app, "PUT", "/api/owner/public-booking",
+                    "{\"enabled\":false,\"expectedVersion\":1}", null).statusCode());
+            assertEquals(json.readTree("{\"state\":\"PREPARED\"}"), json.readTree(query(app, attempt).body()));
+            assertEquals(200, send(app, "PUT", "/api/owner/public-booking",
+                    "{\"enabled\":true,\"expectedVersion\":2}", null).statusCode());
+            assertEquals(201, submit(app, attempt).statusCode());
+        }
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+        "2026-11-02T09:01:00+03:00,SLOT_UNAVAILABLE",
+        "2026-11-02T08:45:00+03:00,SLOT_UNAVAILABLE",
+        "2026-11-01T09:00:00+03:00,OUTSIDE_BOOKING_WINDOW",
+        "2026-11-16T09:00:00+03:00,OUTSIDE_BOOKING_WINDOW"
+    })
+    void readsSavedTimeRefusalsWithoutCreatingBooking(String start, String code) throws Exception {
+        try (var app = start(new MutableClock())) {
+            seed(app, "Consult", false, 30);
+            var before = get(app, "/api/public/owner/meeting-types/Consult/slots");
+            var attempt = prepare(app, "Consult", start);
+            var refusal = submit(app, attempt);
+            assertError(refusal, 409, code);
+            var response = query(app, attempt);
+            assertEquals(200, response.statusCode(), response.body());
+            assertEquals(json.readTree("{\"state\":\"FAILED\",\"error\":" + refusal.body() + "}"),
+                    json.readTree(response.body()));
+            assertEquals(before, get(app, "/api/public/owner/meeting-types/Consult/slots"));
+        }
+    }
+
+    @Test
+    void queryRequiresOriginalSecretForEveryStateAndResetNeverCreatesAnything() throws Exception {
+        JsonNode lost;
+        try (var app = start(new MutableClock())) {
+            seed(app, "Consult", false, 30);
+            lost = prepare(app, "Consult", "2026-11-02T09:00:00+03:00");
+            var failed = prepare(app, "Consult", "2026-11-02T09:00:00+03:00");
+            var prepared = prepare(app, "Consult", "2026-11-02T10:00:00+03:00");
+            assertEquals(201, submit(app, lost).statusCode());
+            assertError(submit(app, failed), 409, "TIME_CONFLICT");
+            var neutral = send(app, "GET", "/api/booking-attempts/missing", null, "Bearer wrong");
+            assertError(neutral, 410, "ATTEMPT_UNAVAILABLE");
+            assertEquals(json.readTree("""
+                    {"code":"ATTEMPT_UNAVAILABLE","message":"Попытка недоступна. Возможен сброс данных."}
+                    """), json.readTree(neutral.body()));
+            for (var attempt : java.util.List.of(lost, failed, prepared)) {
+                for (var auth : java.util.Arrays.asList(null, "", "Bearer wrong",
+                        "Bearer " + attempt.get("attemptId").asString(),
+                        attempt.get("attemptSecret").asString())) {
+                    var response = send(app, "GET",
+                            "/api/booking-attempts/" + attempt.get("attemptId").asString(), null, auth);
+                    assertError(response, 410, "ATTEMPT_UNAVAILABLE");
+                    assertEquals(neutral.body(), response.body());
+                }
+            }
+            assertError(send(app, "GET", "/api/booking-attempts/" + prepared.get("attemptId").asString(),
+                    null, "Bearer " + lost.get("attemptSecret").asString()), 410, "ATTEMPT_UNAVAILABLE");
+        }
+        // A fresh real application has lost the original in-memory state.
+        try (var app = start(new MutableClock())) {
+            seed(app, "Consult", false, 30);
+            var before = get(app, "/api/public/owner/meeting-types/Consult/slots");
+            for (int index = 0; index < 2; index++) {
+                assertError(query(app, lost), 410, "ATTEMPT_UNAVAILABLE");
+                assertError(submit(app, lost), 410, "ATTEMPT_UNAVAILABLE");
+                assertEquals(before, get(app, "/api/public/owner/meeting-types/Consult/slots"));
+            }
+            var fresh = prepare(app, "Consult", "2026-11-02T09:00:00+03:00");
+            assertNotEquals(lost.get("attemptId"), fresh.get("attemptId"));
+            assertEquals(201, submit(app, fresh).statusCode());
+        }
+    }
+
+    @Test
+    void readsSavedDefiniteRefusalWithoutResubmittingAndAllowsOnlyNewAttemptToCorrectIt() throws Exception {
+        try (var app = start(new MutableClock())) {
+            seed(app, "Consult", false, 30);
+            var attempt = prepare(app, "Consult", "2026-11-02T09:00:00+03:00");
+            var competitor = prepare(app, "Consult", "2026-11-02T09:00:00+03:00");
+            assertEquals(201, submit(app, competitor).statusCode());
+            var refusal = submit(app, attempt);
+            assertError(refusal, 409, "TIME_CONFLICT");
+            var slots = get(app, "/api/public/owner/meeting-types/Consult/slots");
+            assertEquals(200, send(app, "PUT", "/api/owner/public-booking",
+                    "{\"enabled\":false,\"expectedVersion\":1}", null).statusCode());
+            var response = query(app, attempt);
+            assertEquals(200, response.statusCode(), response.body());
+            assertEquals("no-store", response.headers().firstValue("Cache-Control").orElseThrow());
+            assertEquals(json.readTree("{\"state\":\"FAILED\",\"error\":" + refusal.body() + "}"),
+                    json.readTree(response.body()));
+            assertEquals(refusal.body(), submit(app, attempt).body());
+            assertEquals(200, send(app, "PUT", "/api/owner/public-booking",
+                    "{\"enabled\":true,\"expectedVersion\":2}", null).statusCode());
+            assertEquals(slots, get(app, "/api/public/owner/meeting-types/Consult/slots"));
+            var corrected = prepare(app, "Consult", "2026-11-02T10:00:00+03:00");
+            assertNotEquals(attempt.get("attemptId"), corrected.get("attemptId"));
+            assertEquals(201, submit(app, corrected).statusCode());
+        }
+    }
+
+    @Test
+    void readsSavedSuccessBeforePublicRestrictionsWithCurrentBookingAndIndependentLink() throws Exception {
+        var clock = new MutableClock();
+        try (var app = start(clock)) {
+            seed(app, "Consult", true, 30);
+            var attempt = prepare(app, "Consult", "2026-11-02T09:00:00+03:00");
+            var first = json.readTree(submit(app, attempt).body());
+            assertEquals(first, json.readTree(query(app, attempt).body()));
+            assertEquals(200, send(app, "PUT", "/api/owner/profile",
+                    "{\"name\":\"Новое имя\",\"username\":\"renamed\",\"expectedVersion\":1}", null).statusCode());
+            assertEquals(200, send(app, "PUT", "/api/owner/public-booking",
+                    "{\"enabled\":false,\"expectedVersion\":2}", null).statusCode());
+            clock.set("2026-11-02T06:00:00Z");
+            var response = query(app, attempt);
+            assertEquals(200, response.statusCode(), response.body());
+            assertEquals("no-store", response.headers().firstValue("Cache-Control").orElseThrow());
+            var result = json.readTree(response.body());
+            assertEquals("SUCCEEDED", result.get("state").asString());
+            assertEquals(first.get("resultUrl"), result.get("resultUrl"));
+            assertEquals(first.get("booking").get("id"), result.get("booking").get("id"));
+            assertEquals("REJECTED", result.get("booking").get("status").asString());
+            assertEquals("APPROVAL_EXPIRED", result.get("booking").get("rejectionReason").asString());
+            assertEquals("Новое имя", result.get("booking").get("ownerName").asString());
+            assertEquals(json.readTree(submit(app, attempt).body()), result);
+            assertEquals(result.get("booking"), get(app, "/api" + result.get("resultUrl").asString()));
+            assertFalse(result.has("error"));
+            assertFalse(response.body().contains(attempt.get("attemptSecret").asString()));
+        }
+    }
+
     @ParameterizedTest
     @CsvSource({"09:30", "10:00"})
     void concurrentNonoverlappingAndTouchingSubmissionsBothSucceed(String time) throws Exception {

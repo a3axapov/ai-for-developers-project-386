@@ -3,6 +3,7 @@ package com.testproject.calendar.owner;
 import com.testproject.calendar.api.ApiFailure;
 import com.testproject.calendar.generated.model.PrepareBookingAttemptCommand;
 import com.testproject.calendar.generated.model.PreparedBookingAttempt;
+import com.testproject.calendar.generated.model.BookingAttemptResult;
 import com.testproject.calendar.generated.model.BookingDetails;
 import com.testproject.calendar.generated.model.SubmittedBookingAttempt;
 import com.testproject.calendar.availability.SlotAvailability;
@@ -77,7 +78,7 @@ public class OwnerState {
 
     public record Submission(boolean created, SubmittedBookingAttempt result) { }
 
-    public synchronized Submission submitAttempt(String id, String authorization) {
+    private PreparedAttempt authenticatedAttempt(String id, String authorization) {
         var attempt = attempts.get(id);
         if (attempt == null || authorization == null || !MessageDigest.isEqual(
                 ("Bearer " + attempt.secret).getBytes(StandardCharsets.UTF_8),
@@ -85,6 +86,25 @@ public class OwnerState {
             throw new ApiFailure(410, new ApiError("ATTEMPT_UNAVAILABLE",
                     "Попытка недоступна. Возможен сброс данных."));
         }
+        return attempt;
+    }
+
+    public synchronized BookingAttemptResult attemptResult(String id, String authorization) {
+        var attempt = authenticatedAttempt(id, authorization);
+        if (attempt.success != null) {
+            refreshBookings();
+            var result = submissionResult(attempt);
+            return new BookingAttemptResult(BookingAttemptResult.StateEnum.SUCCEEDED)
+                    .booking(result.getBooking()).resultUrl(result.getResultUrl());
+        }
+        if (attempt.failure != null) {
+            return new BookingAttemptResult(BookingAttemptResult.StateEnum.FAILED).error(attempt.failure.error());
+        }
+        return new BookingAttemptResult(BookingAttemptResult.StateEnum.PREPARED);
+    }
+
+    public synchronized Submission submitAttempt(String id, String authorization) {
+        var attempt = authenticatedAttempt(id, authorization);
         if (attempt.success != null) {
             refreshBookings();
             return new Submission(false, submissionResult(attempt));

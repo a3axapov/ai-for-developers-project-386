@@ -6,6 +6,7 @@
 package com.testproject.calendar.generated.api;
 
 import com.testproject.calendar.generated.model.ApiError;
+import com.testproject.calendar.generated.model.BookingAttemptResult;
 import com.testproject.calendar.generated.model.BookingDetails;
 import com.testproject.calendar.generated.model.BookingEntry;
 import org.springframework.lang.Nullable;
@@ -29,6 +30,27 @@ import jakarta.annotation.Generated;
 
 @RequestMapping("${openapi.calendar.base-path:}")
 public interface PublicApi {
+
+    String PATH_GET_BOOKING_ATTEMPT = "/api/booking-attempts/{attemptId}";
+    /**
+     * GET /api/booking-attempts/{attemptId}
+     * Safely read an attempt with its original Bearer secret, without submitting it. Missing attempts and invalid secrets give the same neutral 410; saved outcomes precede public booking restrictions.
+     *
+     * @param attemptId  (required)
+     * @param authorization  (optional)
+     * @return The request has succeeded. (status code 200)
+     *         or Client error (status code 410)
+     */
+    @RequestMapping(
+        method = RequestMethod.GET,
+        value = PublicApi.PATH_GET_BOOKING_ATTEMPT,
+        produces = { "application/json" }
+    )
+    ResponseEntity<BookingAttemptResult> getBookingAttempt(
+         @PathVariable("attemptId") String attemptId,
+         @RequestHeader(value = "Authorization", required = false) @Nullable String authorization
+    );
+
 
     String PATH_GET_BOOKING_ENTRY = "/api/public/booking-entry/current";
     /**

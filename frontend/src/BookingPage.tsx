@@ -3,12 +3,15 @@ import { SlotCalendar } from './SlotCalendar';
 import { GuestForm, type GuestContacts } from './GuestForm';
 import {
   getBookingEntry,
+  getBookingAttempt,
+  submitBookingAttempt,
   getPublicBookingPage,
   getPublicMeetingType,
   type PublicBookingPage,
   type PublicMeetingTypePage,
   type PublicMeetingType,
   type PreparedBookingAttempt,
+  type ApiError,
 } from './api/generated';
 
 type PageState =
@@ -44,7 +47,7 @@ export function BookingPage({
   const [refusal, setRefusal] = useState('');
   const [submission, setSubmission] = useState<{
     attempt: PreparedBookingAttempt;
-    status: 'sending' | 'unknown';
+    status: 'sending' | 'unknown' | 'checking' | 'prepared' | 'unavailable';
   }>();
   const [contacts, setContacts] = useState<GuestContacts>({
     guestName: '',
@@ -70,6 +73,74 @@ export function BookingPage({
       };
     });
   }, []);
+
+  function definiteFailure(error: ApiError) {
+    setSubmission(undefined);
+    setRefusal(error.message);
+    if (error.code === 'PAGE_NOT_FOUND') unavailable('not-found');
+    else if (error.code === 'BOOKING_DISABLED') unavailable('disabled');
+    else {
+      setState({ status: 'loading' });
+      setAttempt((previous) => previous + 1);
+    }
+  }
+
+  async function submit(prepared: PreparedBookingAttempt) {
+    setSubmission({ attempt: prepared, status: 'sending' });
+    try {
+      const result = await submitBookingAttempt({
+        path: { attemptId: prepared.attemptId },
+        headers: { Authorization: `Bearer ${prepared.attemptSecret}` },
+      });
+      if (result.data) window.location.assign(result.data.resultUrl);
+      else if (
+        result.response &&
+        result.response.status >= 400 &&
+        result.response.status < 500 &&
+        result.error?.code
+      ) {
+        if (result.error.code === 'ATTEMPT_UNAVAILABLE')
+          setSubmission({ attempt: prepared, status: 'unavailable' });
+        else definiteFailure(result.error);
+      } else setSubmission({ attempt: prepared, status: 'unknown' });
+    } catch {
+      setSubmission({ attempt: prepared, status: 'unknown' });
+    }
+  }
+
+  async function query() {
+    if (!submission || submission.status !== 'unknown') return;
+    const prepared = submission.attempt;
+    setSubmission({ attempt: prepared, status: 'checking' });
+    try {
+      const result = await getBookingAttempt({
+        path: { attemptId: prepared.attemptId },
+        headers: { Authorization: `Bearer ${prepared.attemptSecret}` },
+      });
+      if (result.data?.state === 'SUCCEEDED' && result.data.resultUrl) {
+        window.location.assign(result.data.resultUrl);
+        return;
+      }
+      if (result.data?.state === 'PREPARED') {
+        setSubmission({ attempt: prepared, status: 'prepared' });
+        return;
+      }
+      if (result.data?.state === 'FAILED' && result.data.error) {
+        definiteFailure(result.data.error);
+        return;
+      }
+      if (
+        result.response?.status === 410 &&
+        result.error?.code === 'ATTEMPT_UNAVAILABLE'
+      ) {
+        setSubmission({ attempt: prepared, status: 'unavailable' });
+        return;
+      }
+    } catch {
+      // Reading is safe to repeat; failure leaves the original attempt locked.
+    }
+    setSubmission({ attempt: prepared, status: 'unknown' });
+  }
 
   useEffect(() => {
     const controller = new AbortController();
@@ -116,14 +187,56 @@ export function BookingPage({
     return (
       <section className="placeholder">
         <h1>Отправка бронирования</h1>
-        {submission.status === 'sending' ? (
-          <p role="status">Отправка записи…</p>
-        ) : (
-          <p role="alert">
-            Исход отправки неизвестен. Новая запись заблокирована, чтобы не
-            создать дубликат. Это не подтверждение и не отказ. Сведения попытки
-            сохранены в памяти этой страницы; не закрывайте её.
+        {submission.status === 'unavailable' ? (
+          <>
+            <p role="alert">
+              Попытка недоступна. Возможен сброс данных. Старую запись
+              невозможно восстановить этой попыткой. Новая запись не создавалась
+              автоматически.
+            </p>
+            <button
+              className="button"
+              onClick={() => {
+                setSubmission(undefined);
+                setRefusal('');
+                setState({ status: 'loading' });
+                setAttempt((previous) => previous + 1);
+              }}
+            >
+              Начать новую запись
+            </button>
+          </>
+        ) : submission.status === 'prepared' ? (
+          <>
+            <p role="status">
+              Бронирование ещё не создано. Можно повторить отправку той же
+              попытки.
+            </p>
+            <button
+              className="button"
+              onClick={() => void submit(submission.attempt)}
+            >
+              Повторить отправку той же попытки
+            </button>
+          </>
+        ) : submission.status !== 'unknown' ? (
+          <p role="status">
+            {submission.status === 'sending'
+              ? 'Отправка записи…'
+              : 'Выяснение результата…'}
           </p>
+        ) : (
+          <>
+            <p role="alert">
+              Не удалось узнать результат записи. Исход отправки неизвестен.
+              Новая запись заблокирована, чтобы не создать дубликат. Это не
+              подтверждение и не отказ. Сведения попытки сохранены в памяти этой
+              страницы; не закрывайте её.
+            </p>
+            <button className="button" onClick={() => void query()}>
+              Выяснить результат записи
+            </button>
+          </>
         )}
         <label>
           Ваше имя
@@ -218,21 +331,7 @@ export function BookingPage({
                     setState({ status: 'loading' });
                     setAttempt((previous) => previous + 1);
                   }}
-                  onSending={(attempt) =>
-                    setSubmission({ attempt, status: 'sending' })
-                  }
-                  onUnknown={() =>
-                    setSubmission(
-                      (previous) =>
-                        previous && { ...previous, status: 'unknown' },
-                    )
-                  }
-                  onDefiniteFailure={(message) => {
-                    setSubmission(undefined);
-                    setRefusal(message);
-                    setState({ status: 'loading' });
-                    setAttempt((previous) => previous + 1);
-                  }}
+                  onSubmitAttempt={(prepared) => void submit(prepared)}
                 />
               )}
             />

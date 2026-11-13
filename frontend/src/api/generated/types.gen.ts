@@ -12,6 +12,16 @@ export type ApiError = {
 };
 
 /**
+ * Read-only saved attempt outcome. PREPARED has no booking; SUCCEEDED includes booking and resultUrl; FAILED includes the saved definite error.
+ */
+export type BookingAttemptResult = {
+    state: 'PREPARED' | 'SUCCEEDED' | 'FAILED';
+    booking?: BookingDetails;
+    resultUrl?: string;
+    error?: ApiError;
+};
+
+/**
  * Saved booking conditions and contacts with current time, status and version.
  */
 export type BookingDetails = {
@@ -244,6 +254,36 @@ export type WorkingInterval = {
     start: string;
     end: string;
 };
+
+export type GetBookingAttemptData = {
+    body?: never;
+    headers?: {
+        Authorization?: string;
+    };
+    path: {
+        attemptId: string;
+    };
+    query?: never;
+    url: '/api/booking-attempts/{attemptId}';
+};
+
+export type GetBookingAttemptErrors = {
+    /**
+     * Client error
+     */
+    410: ApiError;
+};
+
+export type GetBookingAttemptError = GetBookingAttemptErrors[keyof GetBookingAttemptErrors];
+
+export type GetBookingAttemptResponses = {
+    /**
+     * The request has succeeded.
+     */
+    200: BookingAttemptResult;
+};
+
+export type GetBookingAttemptResponse = GetBookingAttemptResponses[keyof GetBookingAttemptResponses];
 
 export type SubmitBookingAttemptData = {
     body?: never;

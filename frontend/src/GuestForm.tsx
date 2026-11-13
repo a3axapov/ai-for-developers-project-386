@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import {
   prepareBookingAttempt,
-  submitBookingAttempt,
   type PreparedBookingAttempt,
   type FieldError,
   type Slot,
@@ -22,9 +21,7 @@ export function GuestForm({
   onChange,
   onUnavailable,
   onRefusal,
-  onSending,
-  onUnknown,
-  onDefiniteFailure,
+  onSubmitAttempt,
 }: {
   username: string;
   meetingTypeId: string;
@@ -34,9 +31,7 @@ export function GuestForm({
   onChange: (contacts: GuestContacts) => void;
   onUnavailable: (reason: 'not-found' | 'disabled') => void;
   onRefusal: (message: string) => void;
-  onSending: (attempt: PreparedBookingAttempt) => void;
-  onUnknown: () => void;
-  onDefiniteFailure: (message: string) => void;
+  onSubmitAttempt: (attempt: PreparedBookingAttempt) => void;
 }) {
   const [prepared, setPrepared] = useState<PreparedBookingAttempt>();
   const [pending, setPending] = useState(false);
@@ -72,6 +67,8 @@ export function GuestForm({
             onUnavailable('not-found');
           else if (result.error?.code === 'BOOKING_DISABLED')
             onUnavailable('disabled');
+          else if (result.response.status === 409 && result.error)
+            onRefusal(result.error.message);
           else {
             setErrors(result.error?.fieldErrors ?? []);
             setMessage(
@@ -142,39 +139,10 @@ export function GuestForm({
             className="button"
             type="button"
             disabled={pending}
-            onClick={async () => {
+            onClick={() => {
               if (pending) return;
               setPending(true);
-              onSending(prepared);
-              try {
-                const result = await submitBookingAttempt({
-                  path: { attemptId: prepared.attemptId },
-                  headers: {
-                    Authorization: `Bearer ${prepared.attemptSecret}`,
-                  },
-                });
-                if (result.data) window.location.assign(result.data.resultUrl);
-                else if (
-                  result.response &&
-                  result.response.status >= 400 &&
-                  result.response.status < 500 &&
-                  result.error?.code
-                ) {
-                  if (result.error.code === 'PAGE_NOT_FOUND')
-                    onUnavailable('not-found');
-                  else if (result.error.code === 'BOOKING_DISABLED')
-                    onUnavailable('disabled');
-                  else if (result.response.status === 409)
-                    onRefusal(result.error.message);
-                  else onDefiniteFailure(result.error.message);
-                } else {
-                  onUnknown();
-                }
-              } catch {
-                onUnknown();
-              } finally {
-                setPending(false);
-              }
+              onSubmitAttempt(prepared);
             }}
           >
             Записаться

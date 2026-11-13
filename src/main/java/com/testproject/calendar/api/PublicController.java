@@ -2,6 +2,7 @@ package com.testproject.calendar.api;
 
 import com.testproject.calendar.generated.api.PublicApi;
 import com.testproject.calendar.generated.model.BookingEntry;
+import com.testproject.calendar.generated.model.BookingAttemptResult;
 import com.testproject.calendar.generated.model.PrepareBookingAttemptCommand;
 import com.testproject.calendar.generated.model.PreparedBookingAttempt;
 import com.testproject.calendar.generated.model.SubmittedBookingAttempt;
@@ -27,6 +28,12 @@ public class PublicController implements PublicApi {
         this.owner = owner;
         this.availability = availability;
         this.request = request;
+    }
+
+    @Override
+    public ResponseEntity<BookingAttemptResult> getBookingAttempt(String attemptId, String authorization) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(owner.attemptResult(attemptId, authorization));
     }
 
     @Override

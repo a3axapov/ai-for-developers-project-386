@@ -6,6 +6,43 @@ tags:
   - name: Owner
   - name: Public
 paths:
+  /api/booking-attempts/{attemptId}:
+    get:
+      operationId: getBookingAttempt
+      description: Safely read an attempt with its original Bearer secret, without submitting it. Missing attempts and invalid secrets give the same neutral 410; saved outcomes precede public booking restrictions.
+      parameters:
+        - name: attemptId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: Authorization
+          in: header
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          headers:
+            Cache-Control:
+              required: true
+              schema:
+                type: string
+                enum:
+                  - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingAttemptResult'
+        '410':
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      tags:
+        - Public
   /api/booking-attempts/{attemptId}/submit:
     post:
       operationId: submitBookingAttempt
@@ -582,6 +619,24 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/FieldError'
+    BookingAttemptResult:
+      type: object
+      required:
+        - state
+      properties:
+        state:
+          type: string
+          enum:
+            - PREPARED
+            - SUCCEEDED
+            - FAILED
+        booking:
+          $ref: '#/components/schemas/BookingDetails'
+        resultUrl:
+          type: string
+        error:
+          $ref: '#/components/schemas/ApiError'
+      description: Read-only saved attempt outcome. PREPARED has no booking; SUCCEEDED includes booking and resultUrl; FAILED includes the saved definite error.
     BookingDetails:
       type: object
       required:
