@@ -25,6 +25,45 @@ import tools.jackson.databind.json.JsonMapper;
 class BookingAttemptHttpTests {
     private final JsonMapper json = JsonMapper.builder().build();
 
+    static java.util.stream.Stream<Map<String, Object>> incompleteSelections() {
+        return java.util.stream.Stream.of(
+                Map.of("startsAt", "missing"),
+                Map.of("conditionsToken", "missing"),
+                java.util.Collections.singletonMap("conditionsToken", null),
+                Map.of("conditionsToken", ""),
+                Map.of("conditionsToken", "  "),
+                Map.of("startsAt", "missing", "conditionsToken", "missing"));
+    }
+
+    @ParameterizedTest
+    @MethodSource("incompleteSelections")
+    void publicResourceAndStateTakePriorityOverIncompleteSelection(Map<String, Object> selection) throws Exception {
+        try (var app = start()) {
+            seed(app);
+            var command = command(app);
+            selection.forEach((field, value) -> {
+                if ("missing".equals(value)) {
+                    command.remove(field);
+                } else {
+                    command.put(field, value);
+                }
+            });
+            assertError(app, "/api/public/owner/booking-attempts", command, 422, "VALIDATION_FAILED");
+            assertError(app, "/api/public/unknown/booking-attempts", command, 404, "PAGE_NOT_FOUND");
+            assertEquals(200, send(app, "PUT", "/api/owner/public-booking",
+                    "{\"enabled\":false,\"expectedVersion\":1}").statusCode());
+            assertError(app, "/api/public/owner/booking-attempts", command, 409, "BOOKING_DISABLED");
+            command.put("meetingTypeId", "unknown");
+            assertError(app, "/api/public/owner/booking-attempts", command, 404, "PAGE_NOT_FOUND");
+            for (var raw : java.util.List.of("{", "{\"meetingTypeId\":\"unknown\",\"startsAt\":\"tomorrow\"}",
+                    "{\"meetingTypeId\":\"Consult\",\"guestName\":42}")) {
+                var response = send(app, "POST", "/api/public/owner/booking-attempts", raw);
+                assertEquals(400, response.statusCode(), response.body());
+                assertEquals("MALFORMED_REQUEST", json.readTree(response.body()).get("code").asString());
+            }
+        }
+    }
+
     @Test
     void addressAndPublicStateTakePriorityOverOtherPreparationErrors() throws Exception {
         try (var app = start()) {

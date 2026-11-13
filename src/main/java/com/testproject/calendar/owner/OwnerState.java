@@ -78,12 +78,6 @@ public class OwnerState {
         if (command.getMeetingTypeId() == null || !command.getMeetingTypeId().matches("[A-Za-z0-9-]{1,64}")) {
             errors.add(new FieldError("meetingTypeId", "INVALID_VALUE", "Выберите тип встречи."));
         }
-        if (command.getConditionsToken() == null || command.getConditionsToken().isBlank()) {
-            errors.add(new FieldError("conditionsToken", "INVALID_VALUE", "Загрузите условия встречи."));
-        }
-        if (command.getStartsAt() == null) {
-            errors.add(new FieldError("startsAt", "INVALID_VALUE", "Выберите время встречи."));
-        }
         if (!errors.isEmpty()) {
             throw new ApiFailure(422, new ApiError("VALIDATION_FAILED", "Проверьте данные формы.").fieldErrors(errors));
         }
@@ -93,6 +87,15 @@ public class OwnerState {
         }
         if (type.getArchived()) {
             throw new ApiFailure(409, new ApiError("TYPE_ARCHIVED", "Запись на этот тип встречи прекращена"));
+        }
+        if (command.getConditionsToken() == null || command.getConditionsToken().isBlank()) {
+            errors.add(new FieldError("conditionsToken", "INVALID_VALUE", "Загрузите условия встречи."));
+        }
+        if (command.getStartsAt() == null) {
+            errors.add(new FieldError("startsAt", "INVALID_VALUE", "Выберите время встречи."));
+        }
+        if (!errors.isEmpty()) {
+            throw new ApiFailure(422, new ApiError("VALIDATION_FAILED", "Проверьте данные формы.").fieldErrors(errors));
         }
         if (!conditionsToken(type).equals(command.getConditionsToken())) {
             throw new ApiFailure(409, new ApiError("CONDITIONS_CHANGED",
