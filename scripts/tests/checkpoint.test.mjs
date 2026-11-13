@@ -8,11 +8,27 @@ import { join, resolve } from 'node:path';
 test('checkpoint persists outside tracked files and refuses a stale HEAD', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'checkpoint-test-'));
   const script = resolve('scripts/checkpoint.mjs');
-  const git = (...args) =>
-    spawnSync('git', args, { cwd: directory, encoding: 'utf8' });
+  // hk exports repository selectors in linked worktrees. cwd alone cannot
+  // isolate a Git fixture while those selectors still point at the caller.
+  const env = { ...process.env };
+  const localVariables = spawnSync('git', ['rev-parse', '--local-env-vars'], {
+    encoding: 'utf8',
+  });
+  assert.equal(localVariables.status, 0, localVariables.stderr);
+  for (const name of localVariables.stdout.trim().split('\n')) delete env[name];
+  const git = (...args) => {
+    const result = spawnSync('git', args, {
+      cwd: directory,
+      env,
+      encoding: 'utf8',
+    });
+    assert.equal(result.status, 0, result.stderr);
+    return result;
+  };
   const cli = (...args) =>
     spawnSync(process.execPath, [script, ...args], {
       cwd: directory,
+      env,
       encoding: 'utf8',
     });
   try {
@@ -47,6 +63,7 @@ test('checkpoint persists outside tracked files and refuses a stale HEAD', async
     git('worktree', 'add', '-b', 'other', linked);
     const wrongWorktree = spawnSync(process.execPath, [script, 'show', '35'], {
       cwd: linked,
+      env,
       encoding: 'utf8',
     });
     assert.equal(wrongWorktree.status, 1);
