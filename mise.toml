@@ -78,12 +78,16 @@ run = "npm exec --workspace frontend -- playwright install --with-deps chromium"
 description = "Build the application and test navigation and owner profiles against real Spring Boot servers"
 run = "npm run test:e2e --workspace frontend"
 
+[tasks."test:browser:targeted"]
+description = "Build the application and run selected Playwright tests (pass a file or --grep)"
+run = "npm run test:e2e --workspace frontend --"
+
 [tasks.build]
 description = "Build a runnable JAR containing the frontend"
 run = "./gradlew --no-daemon build"
 
-[tasks.check]
-description = "Run the same checks locally and in CI"
+[tasks."check:fast"]
+description = "Check generated artifacts, lint, types and JUnit (without browser tests)"
 run = [
   "mise run test:tools",
   "mise run api:routes",
@@ -91,6 +95,12 @@ run = [
   "mise run lint",
   "mise run typecheck",
   "mise run test",
+]
+
+[tasks.check]
+description = "Run the full local/CI gate, including browser tests"
+run = [
+  "mise run check:fast",
   "mise run test:browser",
 ]
 

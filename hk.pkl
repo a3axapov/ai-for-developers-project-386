@@ -11,7 +11,7 @@ hooks {
   }
   ["pre-push"] {
     steps {
-      ["check"] { check = "mise run check" }
+      ["check"] { check = "mise run check:fast" }
     }
   }
 }
