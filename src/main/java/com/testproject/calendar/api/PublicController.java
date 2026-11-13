@@ -4,6 +4,8 @@ import com.testproject.calendar.generated.api.PublicApi;
 import com.testproject.calendar.generated.model.BookingEntry;
 import com.testproject.calendar.generated.model.PublicBookingPage;
 import com.testproject.calendar.generated.model.PublicMeetingTypePage;
+import com.testproject.calendar.generated.model.PublicSlots;
+import com.testproject.calendar.availability.SlotAvailability;
 import com.testproject.calendar.owner.OwnerState;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
@@ -13,9 +15,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class PublicController implements PublicApi {
 
     private final OwnerState owner;
+    private final SlotAvailability availability;
 
-    public PublicController(OwnerState owner) {
+    public PublicController(OwnerState owner, SlotAvailability availability) {
         this.owner = owner;
+        this.availability = availability;
     }
 
     @Override
@@ -32,5 +36,11 @@ public class PublicController implements PublicApi {
     @Override
     public ResponseEntity<PublicMeetingTypePage> getPublicMeetingType(String username, String id) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(owner.publicMeetingType(username, id));
+    }
+
+    @Override
+    public ResponseEntity<PublicSlots> getPublicSlots(String username, String id) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(owner.publicSlots(username, id, availability));
     }
 }

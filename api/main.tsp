@@ -222,6 +222,37 @@ model PublicMeetingTypePage {
   meetingType?: PublicMeetingType;
 }
 
+model Slot {
+  @doc("An actual start on the type-zone 15-minute grid; nonexistent local starts are skipped and repeated starts are returned separately with offsets.")
+  startsAt: offsetDateTime;
+
+  @doc("Start plus the type's elapsed duration, covered by continuous working time without crossing breaks or bridging repeated working sections.")
+  endsAt: offsetDateTime;
+}
+
+@doc("The complete, guest-independent actual-time window, from tomorrow 00:00 in the current owner zone for 14 calendar days. Every slot fits entirely; ending exactly at windowEnd is allowed.")
+model PublicSlots {
+  windowStart: offsetDateTime;
+  windowEnd: offsetDateTime;
+  ownerTimeZone: string;
+  meetingTypeTimeZone: string;
+  conditionsToken: string;
+  items: Slot[];
+}
+
+@get
+@route("/public/{username}/meeting-types/{id}/slots")
+@tag("Public")
+@operationId("getPublicSlots")
+@doc("Read all available slots. Unknown addresses return 404 before public-state checks; disabled booking or an archived type returns 409. Guest time zone is not an input.")
+op getPublicSlots(@path username: string, @path id: string):
+  | {
+      @header("Cache-Control") cacheControl: "no-store";
+      @body body: PublicSlots;
+    }
+  | PageNotFound
+  | StateConflict;
+
 @get
 @route("/public/{username}")
 @tag("Public")

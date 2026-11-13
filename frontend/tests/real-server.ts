@@ -3,16 +3,35 @@ import { once } from 'node:events';
 import { expect, test as base } from '@playwright/test';
 
 // Each mutable scenario gets its own real application state; the read-only suite uses 4173.
-export const test = base.extend<{ ownerUsername: string }>({
+export const test = base.extend<{
+  ownerUsername: string;
+  serverArguments: string[];
+  fixedNow: string | undefined;
+}>({
   ownerUsername: ['anna-1', { option: true }],
-  baseURL: async ({ playwright, ownerUsername }, use) => {
+  serverArguments: [[], { option: true }],
+  fixedNow: [undefined, { option: true }],
+  baseURL: async (
+    { playwright, ownerUsername, serverArguments, fixedNow },
+    use,
+  ) => {
+    const launcher = fixedNow
+      ? [
+          '-Dloader.path=../build/classes/java/test',
+          '-Dloader.main=com.testproject.calendar.fixtures.SlotBrowserApplication',
+          '-cp',
+          '../build/libs/calendar.jar',
+          'org.springframework.boot.loader.launch.PropertiesLauncher',
+          `--slot-test.now=${fixedNow}`,
+        ]
+      : ['-jar', '../build/libs/calendar.jar'];
     const server = spawn('java', [
-      '-jar',
-      '../build/libs/calendar.jar',
+      ...launcher,
       '--server.address=127.0.0.1',
       '--server.port=4174',
       '--spring.config.additional-location=file:tests/fixtures/owner.yaml',
       `--calendar.initial.username=${ownerUsername}`,
+      ...serverArguments,
     ]);
     let output = '';
     server.stdout.on('data', (chunk: Buffer) => {

@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { CreateMeetingTypeData, CreateMeetingTypeErrors, CreateMeetingTypeResponses, GetBookingEntryData, GetBookingEntryResponses, GetHealthData, GetHealthResponses, GetMeetingTypeData, GetMeetingTypeErrors, GetMeetingTypeResponses, GetOwnerOperationData, GetOwnerOperationErrors, GetOwnerOperationResponses, GetOwnerProfileData, GetOwnerProfileResponses, GetPublicBookingPageData, GetPublicBookingPageErrors, GetPublicBookingPageResponses, GetPublicMeetingTypeData, GetPublicMeetingTypeErrors, GetPublicMeetingTypeResponses, ListMeetingTypesData, ListMeetingTypesResponses, SetPublicBookingData, SetPublicBookingErrors, SetPublicBookingResponses, UpdateOwnerProfileData, UpdateOwnerProfileErrors, UpdateOwnerProfileResponses } from './types.gen';
+import type { CreateMeetingTypeData, CreateMeetingTypeErrors, CreateMeetingTypeResponses, GetBookingEntryData, GetBookingEntryResponses, GetHealthData, GetHealthResponses, GetMeetingTypeData, GetMeetingTypeErrors, GetMeetingTypeResponses, GetOwnerOperationData, GetOwnerOperationErrors, GetOwnerOperationResponses, GetOwnerProfileData, GetOwnerProfileResponses, GetPublicBookingPageData, GetPublicBookingPageErrors, GetPublicBookingPageResponses, GetPublicMeetingTypeData, GetPublicMeetingTypeErrors, GetPublicMeetingTypeResponses, GetPublicSlotsData, GetPublicSlotsErrors, GetPublicSlotsResponses, ListMeetingTypesData, ListMeetingTypesResponses, SetPublicBookingData, SetPublicBookingErrors, SetPublicBookingResponses, UpdateOwnerProfileData, UpdateOwnerProfileErrors, UpdateOwnerProfileResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -84,3 +84,8 @@ export const getPublicBookingPage = <ThrowOnError extends boolean = false>(optio
  * Read explicitly selected conditions. Unknown username/ID returns 404 even when booking is disabled.
  */
 export const getPublicMeetingType = <ThrowOnError extends boolean = false>(options: Options<GetPublicMeetingTypeData, ThrowOnError>): RequestResult<GetPublicMeetingTypeResponses, GetPublicMeetingTypeErrors, ThrowOnError> => (options.client ?? client).get<GetPublicMeetingTypeResponses, GetPublicMeetingTypeErrors, ThrowOnError>({ url: '/api/public/{username}/meeting-types/{id}', ...options });
+
+/**
+ * Read all available slots. Unknown addresses return 404 before public-state checks; disabled booking or an archived type returns 409. Guest time zone is not an input.
+ */
+export const getPublicSlots = <ThrowOnError extends boolean = false>(options: Options<GetPublicSlotsData, ThrowOnError>): RequestResult<GetPublicSlotsResponses, GetPublicSlotsErrors, ThrowOnError> => (options.client ?? client).get<GetPublicSlotsResponses, GetPublicSlotsErrors, ThrowOnError>({ url: '/api/public/{username}/meeting-types/{id}/slots', ...options });

@@ -150,6 +150,29 @@ export type PublicMeetingTypePage = {
     meetingType?: PublicMeetingType;
 };
 
+/**
+ * The complete, guest-independent actual-time window, from tomorrow 00:00 in the current owner zone for 14 calendar days. Every slot fits entirely; ending exactly at windowEnd is allowed.
+ */
+export type PublicSlots = {
+    windowStart: string;
+    windowEnd: string;
+    ownerTimeZone: string;
+    meetingTypeTimeZone: string;
+    conditionsToken: string;
+    items: Array<Slot>;
+};
+
+export type Slot = {
+    /**
+     * An actual start on the type-zone 15-minute grid; nonexistent local starts are skipped and repeated starts are returned separately with offsets.
+     */
+    startsAt: string;
+    /**
+     * Start plus the type's elapsed duration, covered by continuous working time without crossing breaks or bridging repeated working sections.
+     */
+    endsAt: string;
+};
+
 export type WorkingDay = {
     day: 'MONDAY' | 'TUESDAY' | 'WEDNESDAY' | 'THURSDAY' | 'FRIDAY' | 'SATURDAY' | 'SUNDAY';
     intervals: Array<WorkingInterval>;
@@ -440,3 +463,35 @@ export type GetPublicMeetingTypeResponses = {
 };
 
 export type GetPublicMeetingTypeResponse = GetPublicMeetingTypeResponses[keyof GetPublicMeetingTypeResponses];
+
+export type GetPublicSlotsData = {
+    body?: never;
+    path: {
+        username: string;
+        id: string;
+    };
+    query?: never;
+    url: '/api/public/{username}/meeting-types/{id}/slots';
+};
+
+export type GetPublicSlotsErrors = {
+    /**
+     * The server cannot find the requested resource.
+     */
+    404: ApiError;
+    /**
+     * The request conflicts with the current state of the server.
+     */
+    409: ApiError;
+};
+
+export type GetPublicSlotsError = GetPublicSlotsErrors[keyof GetPublicSlotsErrors];
+
+export type GetPublicSlotsResponses = {
+    /**
+     * The request has succeeded.
+     */
+    200: PublicSlots;
+};
+
+export type GetPublicSlotsResponse = GetPublicSlotsResponses[keyof GetPublicSlotsResponses];

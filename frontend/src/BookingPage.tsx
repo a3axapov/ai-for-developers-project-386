@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { SlotCalendar } from './SlotCalendar';
 import {
   getBookingEntry,
   getPublicBookingPage,
@@ -38,6 +39,20 @@ export function BookingPage({
 }) {
   const [state, setState] = useState<PageState>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  const unavailable = useCallback((reason: 'not-found' | 'disabled') => {
+    setState((previous) => {
+      if (reason === 'not-found') return { status: 'not-found' };
+      if (previous.status !== 'ready') return previous;
+      return {
+        status: 'ready',
+        page: {
+          ownerName: previous.page.ownerName,
+          ownerTimeZone: previous.page.ownerTimeZone,
+          state: 'BOOKING_DISABLED',
+        },
+      };
+    });
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -100,7 +115,12 @@ export function BookingPage({
             <article className="meeting-card">
               <Conditions item={state.page.meetingType} />
             </article>
-            <p>Выбор времени и запись появятся позже.</p>
+            <SlotCalendar
+              key={`${username}/${meetingTypeId}`}
+              username={username!}
+              id={meetingTypeId!}
+              onUnavailable={unavailable}
+            />
           </>
         ) : 'items' in state.page && state.page.items?.length ? (
           <>

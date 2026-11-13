@@ -1,6 +1,8 @@
 package com.testproject.calendar.owner;
 
 import com.testproject.calendar.api.ApiFailure;
+import com.testproject.calendar.availability.SlotAvailability;
+import com.testproject.calendar.generated.model.PublicSlots;
 import com.testproject.calendar.generated.model.ApiError;
 import com.testproject.calendar.generated.model.FieldError;
 import com.testproject.calendar.generated.model.OwnerProfile;
@@ -163,6 +165,18 @@ public class OwnerState {
             page.setMeetingType(publicType(type));
         }
         return page;
+    }
+
+    public synchronized PublicSlots publicSlots(String requestedUsername, String id, SlotAvailability availability) {
+        requireUsername(requestedUsername);
+        var type = meetingType(id);
+        if (!bookingEnabled) {
+            throw new ApiFailure(409, new ApiError("BOOKING_DISABLED", "Запись временно недоступна"));
+        }
+        if (type.getArchived()) {
+            throw new ApiFailure(409, new ApiError("TYPE_ARCHIVED", "Запись на этот тип встречи прекращена"));
+        }
+        return availability.slots(type, profile().getTimeZone(), conditionsToken(type));
     }
 
     private void requireUsername(String requestedUsername) {

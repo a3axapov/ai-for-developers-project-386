@@ -9,6 +9,7 @@ import com.testproject.calendar.generated.model.ApiError;
 import com.testproject.calendar.generated.model.BookingEntry;
 import com.testproject.calendar.generated.model.PublicBookingPage;
 import com.testproject.calendar.generated.model.PublicMeetingTypePage;
+import com.testproject.calendar.generated.model.PublicSlots;
 import org.springframework.http.ResponseEntity;
 
 import org.springframework.web.bind.annotation.*;
@@ -76,6 +77,28 @@ public interface PublicApi {
         produces = { "application/json" }
     )
     ResponseEntity<PublicMeetingTypePage> getPublicMeetingType(
+         @PathVariable("username") String username,
+         @PathVariable("id") String id
+    );
+
+
+    String PATH_GET_PUBLIC_SLOTS = "/api/public/{username}/meeting-types/{id}/slots";
+    /**
+     * GET /api/public/{username}/meeting-types/{id}/slots
+     * Read all available slots. Unknown addresses return 404 before public-state checks; disabled booking or an archived type returns 409. Guest time zone is not an input.
+     *
+     * @param username  (required)
+     * @param id  (required)
+     * @return The request has succeeded. (status code 200)
+     *         or The server cannot find the requested resource. (status code 404)
+     *         or The request conflicts with the current state of the server. (status code 409)
+     */
+    @RequestMapping(
+        method = RequestMethod.GET,
+        value = PublicApi.PATH_GET_PUBLIC_SLOTS,
+        produces = { "application/json" }
+    )
+    ResponseEntity<PublicSlots> getPublicSlots(
          @PathVariable("username") String username,
          @PathVariable("id") String id
     );
