@@ -16,6 +16,8 @@ const emptyDraft = {
   durationMinutes: '30',
   requiresApproval: false,
 };
+export type MeetingTypeDraft = typeof emptyDraft;
+
 const dayNames = {
   MONDAY: 'Пн',
   TUESDAY: 'Вт',
@@ -29,11 +31,15 @@ const dayNames = {
 export function MeetingTypes({
   bookingUrl,
   blocked,
+  draft = emptyDraft,
+  onDraftChange,
   onLockChange,
   onProfileLoaded,
 }: {
   bookingUrl: string;
   blocked: boolean;
+  draft: MeetingTypeDraft | undefined;
+  onDraftChange: (draft: MeetingTypeDraft) => void;
   onLockChange: (locked: boolean) => void;
   onProfileLoaded: (profile: OwnerProfile) => void;
 }) {
@@ -41,7 +47,6 @@ export function MeetingTypes({
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [attempt, setAttempt] = useState(0);
-  const [draft, setDraft] = useState(emptyDraft);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string>();
   const [fieldErrors, setFieldErrors] = useState<ApiError['fieldErrors']>([]);
@@ -54,7 +59,7 @@ export function MeetingTypes({
       ...previous.filter((type) => type.id !== item.id),
       item,
     ]);
-    setDraft(emptyDraft);
+    onDraftChange(emptyDraft);
     setPendingKey(undefined);
     setError(undefined);
     setFieldErrors([]);
@@ -304,7 +309,7 @@ export function MeetingTypes({
                 event: React.ChangeEvent<
                   HTMLInputElement | HTMLTextAreaElement
                 >,
-              ) => setDraft({ ...draft, [field]: event.target.value }),
+              ) => onDraftChange({ ...draft, [field]: event.target.value }),
             };
             return (
               <div key={field}>
@@ -327,7 +332,10 @@ export function MeetingTypes({
             checked={draft.requiresApproval}
             disabled={blocked || saving || Boolean(pendingKey)}
             onChange={(event) =>
-              setDraft({ ...draft, requiresApproval: event.target.checked })
+              onDraftChange({
+                ...draft,
+                requiresApproval: event.target.checked,
+              })
             }
           />
           Ручное подтверждение

@@ -1,5 +1,5 @@
 import { expect, test } from './real-server';
-import type { Page } from '@playwright/test';
+import type { Page, Route } from '@playwright/test';
 
 test('создание ждёт загрузки исходного списка и не теряется из-за запоздалого чтения', async ({
   page,
@@ -440,6 +440,157 @@ test('неизвестный исход профиля блокирует соз
     page.getByRole('textbox', { name: 'ID типа', exact: true }),
   ).toHaveValue('Consult');
 });
+
+for (const command of ['public-booking', 'profile'] as const) {
+  for (const failedReload of [false, true]) {
+    test(`черновик типа целиком сохраняется: ${command}, ${failedReload ? 'ошибка загрузки и повтор' : 'успешная загрузка'} после 410`, async ({
+      page,
+      request,
+    }) => {
+      let commands = 0;
+      let creations = 0;
+      let key = '';
+      page.on('request', (req) => {
+        if (req.method() === 'PUT') commands++;
+        if (
+          req.method() === 'POST' &&
+          new URL(req.url()).pathname === '/api/owner/meeting-types'
+        )
+          creations++;
+      });
+      await page.route(`**/api/owner/${command}`, async (route) => {
+        if (route.request().method() !== 'PUT') return route.continue();
+        key = route.request().headers()['idempotency-key'];
+        await route.abort('connectionreset');
+      });
+      await page.goto('/admin');
+      await expect(page.getByText('Типов встреч пока нет')).toBeVisible();
+      await fillType(page, 'Unsaved-Draft');
+      await page
+        .getByRole('spinbutton', { name: 'Длительность, минут' })
+        .fill('45');
+      await page
+        .getByRole('checkbox', { name: 'Ручное подтверждение' })
+        .check();
+      const create = page.getByRole('button', {
+        name: 'Создать тип встречи',
+        exact: true,
+      });
+      const expectDraft = async () => {
+        await expect
+          .poll(async () => ({
+            id: await page
+              .getByRole('textbox', { name: 'ID типа', exact: true })
+              .inputValue(),
+            title: await page
+              .getByRole('textbox', { name: 'Название типа', exact: true })
+              .inputValue(),
+            description: await page
+              .getByRole('textbox', { name: 'Описание типа', exact: true })
+              .inputValue(),
+            duration: await page
+              .getByRole('spinbutton', { name: 'Длительность, минут' })
+              .inputValue(),
+            approval: await page
+              .getByRole('checkbox', { name: 'Ручное подтверждение' })
+              .isChecked(),
+          }))
+          .toEqual({
+            id: 'Unsaved-Draft',
+            title: '  Консультация   по проекту  ',
+            description: '  Обсудим   вопросы проекта и следующие шаги  ',
+            duration: '45',
+            approval: true,
+          });
+      };
+      if (command === 'profile') {
+        await page
+          .getByRole('textbox', { name: 'Имя', exact: true })
+          .fill('Несохранённое имя');
+        await page
+          .getByRole('button', { name: 'Сохранить профиль', exact: true })
+          .click();
+      } else {
+        await page.getByRole('switch').click();
+      }
+      await expect(page.getByRole('alert')).toContainText(
+        'Исход операции неизвестен',
+      );
+      await expect(create).toBeDisabled();
+      await expectDraft();
+      const lookup = page.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname === `/api/owner/operations/${key}`,
+      );
+      await page
+        .getByRole('button', { name: 'Выяснить результат', exact: true })
+        .click();
+      const outcome = await lookup;
+      expect(outcome.status()).toBe(410);
+      expect(await outcome.json()).toMatchObject({
+        code: 'OPERATION_UNAVAILABLE',
+      });
+      await expect(page.getByRole('alert')).toContainText(
+        'Возможен сброс данных',
+      );
+      await expect(create).toBeDisabled();
+      await expectDraft();
+
+      let release!: () => void;
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const reload = async (route: Route) => {
+        if (route.request().method() !== 'GET') return route.fallback();
+        await gate;
+        if (failedReload) return route.abort('connectionreset');
+        return route.continue();
+      };
+      await page.route('**/api/owner/profile', reload);
+      try {
+        await page
+          .getByRole('button', { name: 'Загрузить актуальный профиль' })
+          .click();
+        await expect(page.getByText('Загрузка профиля…')).toBeVisible();
+        await expect(create).toHaveCount(0);
+        expect(creations).toBe(0);
+        expect(commands).toBe(1);
+      } finally {
+        release();
+      }
+      if (failedReload) {
+        await expect(page.getByRole('alert')).toContainText(
+          'Не удалось загрузить профиль',
+        );
+        await expect(create).toHaveCount(0);
+        expect(creations).toBe(0);
+        expect(commands).toBe(1);
+        await page.unroute('**/api/owner/profile', reload);
+        await page
+          .getByRole('button', { name: 'Повторить загрузку', exact: true })
+          .click();
+      }
+      await expect(create).toBeEnabled();
+      await expectDraft();
+      if (command === 'profile') {
+        await expect(
+          page.getByRole('textbox', { name: 'Имя', exact: true }),
+        ).toHaveValue('Несохранённое имя');
+      }
+      expect(creations).toBe(0);
+      expect(commands).toBe(1);
+      expect(
+        (await (await request.get('/api/owner/meeting-types')).json()).items,
+      ).toEqual([]);
+      const profile = await (await request.get('/api/owner/profile')).json();
+      expect(profile).toMatchObject({
+        name: 'Анна Петрова',
+        bookingEnabled: false,
+        version: 1,
+      });
+    });
+  }
+}
 
 test('ошибки загрузки типов и прямой страницы отличаются от пустого списка и допускают повтор', async ({
   page,
