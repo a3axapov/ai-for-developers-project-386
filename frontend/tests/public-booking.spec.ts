@@ -44,22 +44,45 @@ test('владелец копирует общую ссылку из текущ�
   baseURL,
 }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
-  await page.goto('/admin');
-  const link = page.getByRole('link', {
-    name: `${baseURL}/booking/anna-1`,
-    exact: true,
+  let releaseMeetingTypes!: () => void;
+  const meetingTypesDelivery = new Promise<void>((resolve) => {
+    releaseMeetingTypes = resolve;
   });
-  await expect(link).toHaveAttribute('href', '/booking/anna-1');
-  const copy = page.getByRole('button', { name: 'Копировать ссылку' });
-  await copy.focus();
-  await page.keyboard.press('Enter');
-  await expect(page.getByRole('status')).toHaveText('Ссылка скопирована');
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
-    `${baseURL}/booking/anna-1`,
-  );
-  await link.click();
-  await expect(page).toHaveURL('/booking/anna-1');
-  await expect(page.getByText('Запись временно недоступна')).toBeVisible();
+  await page.route('**/api/owner/meeting-types', async (route) => {
+    const response = await route.fetch();
+    await meetingTypesDelivery;
+    await route.fulfill({ response });
+  });
+  try {
+    await page.goto('/admin');
+    const loading = page
+      .getByRole('status')
+      .filter({ hasText: /^Загрузка типов встреч…$/ });
+    await expect(loading).toBeVisible();
+    const link = page.getByRole('link', {
+      name: `${baseURL}/booking/anna-1`,
+      exact: true,
+    });
+    await expect(link).toHaveAttribute('href', '/booking/anna-1');
+    const copy = page.getByRole('button', { name: 'Копировать ссылку' });
+    await copy.focus();
+    await page.keyboard.press('Enter');
+    await expect(
+      page.getByRole('status').filter({ hasText: /^Ссылка скопирована$/ }),
+    ).toHaveText('Ссылка скопирована');
+    await expect(loading).toBeVisible();
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+      `${baseURL}/booking/anna-1`,
+    );
+    releaseMeetingTypes();
+    await page.unrouteAll({ behavior: 'wait' });
+    await link.click();
+    await expect(page).toHaveURL('/booking/anna-1');
+    await expect(page.getByText('Запись временно недоступна')).toBeVisible();
+  } finally {
+    releaseMeetingTypes();
+    await page.unrouteAll({ behavior: 'wait' });
+  }
 });
 
 test('устаревшая вкладка показывает актуальный профиль и требует нового действия', async ({
