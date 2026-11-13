@@ -211,6 +211,11 @@ mise run test:browser:install
 mise run check
 ```
 
+Быстрая проверка готовности без сборки: `mise run doctor`. Порядок восстановления
+worktree, checkpoint, независимого ревью и публикации описан в
+[docs/agents/workflow.md](docs/agents/workflow.md); там же зафиксирована пауза
+продуктовой реализации перед #20.
+
 `mise install` устанавливает закреплённые инструменты, затем через postinstall
 запускает `npm ci` и устанавливает Git-хуки hk. В CI Git-хуки не устанавливаются.
 Повторная установка зависимостей: `mise run install`.

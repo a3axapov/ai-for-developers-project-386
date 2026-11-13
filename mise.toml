@@ -50,6 +50,22 @@ run = "npm run typecheck"
 description = "Report npm advisories (including build-time dependencies)"
 run = "npm audit"
 
+[tasks.doctor]
+description = "Quick read-only tool, Chromium and browser-port diagnostics (no build)"
+run = "node scripts/doctor.mjs"
+
+[tasks.checkpoint]
+description = "Save or validate a local ticket checkpoint in Git common metadata"
+run = "node scripts/checkpoint.mjs"
+
+[tasks."test:tools"]
+description = "Test maintenance CLI boundaries and generated-file comparison"
+run = "node --test scripts/tests/*.test.mjs"
+
+[tasks."api:routes"]
+description = "Reject overlapping routes resolved from TypeSpec source"
+run = "node scripts/check-routes.mjs"
+
 [tasks.test]
 description = "Run JUnit tests, including a real HTTP smoke test"
 run = "./gradlew --no-daemon test"
@@ -69,6 +85,8 @@ run = "./gradlew --no-daemon build"
 [tasks.check]
 description = "Run the same checks locally and in CI"
 run = [
+  "mise run test:tools",
+  "mise run api:routes",
   "mise run api:check",
   "mise run lint",
   "mise run typecheck",

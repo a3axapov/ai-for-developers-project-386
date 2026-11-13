@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
-import { cp, mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
+import { cp, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, relative, resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createClient } from '@hey-api/openapi-ts';
 
@@ -12,36 +12,16 @@ const openapiDirectory = join(temporary, 'api/openapi');
 const clientDirectory = join(temporary, 'frontend/src/api/generated');
 const serverDirectory = join(temporary, 'api/server');
 
-async function files(directory) {
-  const entries = await readdir(directory, { withFileTypes: true });
-  const paths = await Promise.all(
-    entries.map((entry) => {
-      const path = join(directory, entry.name);
-      return entry.isDirectory() ? files(path) : [path];
-    }),
-  );
-  return paths.flat();
-}
-
 async function compare(expectedDirectory, actualDirectory) {
-  const expected = (await files(expectedDirectory))
-    .map((path) => relative(expectedDirectory, path))
-    .sort();
-  const actual = (await files(actualDirectory))
-    .map((path) => relative(actualDirectory, path))
-    .sort();
-  if (JSON.stringify(expected) !== JSON.stringify(actual)) {
-    throw new Error(`Generated file list differs in ${actualDirectory}`);
-  }
-  for (const path of expected) {
-    const [left, right] = await Promise.all([
-      readFile(join(expectedDirectory, path)),
-      readFile(join(actualDirectory, path)),
-    ]);
-    if (!left.equals(right)) {
-      throw new Error(`Generated file differs: ${join(actualDirectory, path)}`);
-    }
-  }
+  execFileSync(
+    process.execPath,
+    [
+      join(root, 'scripts/check-generated.mjs'),
+      expectedDirectory,
+      actualDirectory,
+    ],
+    { stdio: 'inherit' },
+  );
 }
 
 try {

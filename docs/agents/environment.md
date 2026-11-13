@@ -10,6 +10,9 @@
 
 ## Verification
 
+- Quick readiness check (no build): `mise run doctor` checks pinned command versions, launches real Chromium and probes ports 4173/4174 without keeping them reserved. It never installs tools or system packages. `--tools-only` is a narrower diagnostic, not browser evidence.
+- Resume checkpoints, worktree instruction checks, review handoff and SSH/CI guidance: [workflow.md](workflow.md). Existing regression coverage and maintenance CLI tests: [retro-regressions.md](retro-regressions.md).
+
 - `mise run check` is the single local/CI gate: `api:check` → lint/format → typecheck → JUnit including real HTTP API tests → application build with the frontend → Playwright against real Spring Boot servers.
 - Install Chromium and its system dependencies once with `mise run test:browser:install`.
 - If Chromium fails to start, list missing packages with `./node_modules/.bin/playwright install-deps --dry-run chromium` and ask the user to run `sudo ./node_modules/.bin/playwright install-deps chromium`. Do not change tests, disable the browser, or edit system files to hide the failure.

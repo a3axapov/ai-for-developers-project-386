@@ -6,6 +6,7 @@
 - Generated paths: `api/openapi/`, `api/server/` and `frontend/src/api/generated/`. Never edit files in these paths manually; update them through generation.
 - Keep generated artifacts committed. `mise run api:check` must regenerate every artifact set in a temporary directory and compare both contents and complete file lists, detecting added, removed, and changed files without rewriting the working tree. Keep generator versions pinned and treat TypeSpec warnings as errors.
 - `api:check` must not rewrite the working tree; keep a regression test for added, removed, and changed files and for unchanged inputs.
+- The public file-comparison CLI is `node scripts/check-generated.mjs EXPECTED ACTUAL`; `api:check` uses it for all three artifact sets. Fixture tests run in `mise run test:tools`, included in `check`. `mise run api:routes` resolves source TypeSpec routes without emitting artifacts and rejects same-method overlapping literal/parameter routes before generation.
 - When adding or changing server generation, compile application controllers against the generated interfaces and verify compatibility through a real HTTP test; successful generation alone is insufficient.
 
 ## Packaging
