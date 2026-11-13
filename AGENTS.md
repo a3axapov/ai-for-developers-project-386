@@ -23,6 +23,8 @@
 - API tests must verify the real server's paths, methods, response fields, status codes, and error bodies against the contract and specification.
 - Use Playwright for browser tests against the built frontend served by the real application server, without substituting booking API responses. Keep test state isolated.
 - Before finishing, run `mise run check`; report the result and any checks not run. Claim CI success only after a green GitHub Actions run for the commit.
+- During TDD and review fixes, run focused tests; use `mise run check:fast` for the non-browser suite. Neither replaces the full gate. Run the full gate after final review fixes on the integration tree; reuse its result only while the checked code and configuration remain unchanged.
+- Implementers and reviewers do not push. The coordinator pushes the integration branch once per ticket after review, integration and the full gate, then waits for CI once. If CI finds a defect, fix and recheck before a corrective push. Pre-push runs only `check:fast`; it does not certify the full gate.
 - Run long checks (`mise run check`, Gradle, Playwright) with an explicit timeout and sequentially; use background only for independent work.
 - Put final acceptance evidence in the ticket comment: exact SHA, commands and results, CI links, and review verdict. Do not rely on `/tmp`.
 - For push → CI, prefer one waiting run with a sufficient timeout and a single final answer over repeated polling.
