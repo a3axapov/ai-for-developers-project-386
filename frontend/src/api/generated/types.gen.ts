@@ -100,6 +100,39 @@ export type OwnerProfile = {
     bookingUrl: string;
 };
 
+/**
+ * Immutable future booking data. Preparation creates no booking and reserves no time.
+ */
+export type PrepareBookingAttemptCommand = {
+    meetingTypeId: string;
+    conditionsToken: string;
+    startsAt: string;
+    /**
+     * 1–100 Unicode code points after trimming and collapsing spaces; controls and invisible characters are rejected.
+     */
+    guestName: string;
+    /**
+     * One syntactically valid address, at most 254 Unicode code points after trimming edge spaces.
+     */
+    guestEmail: string;
+    /**
+     * At most 2000 Unicode code points. Newlines are allowed, other controls and invisible characters are rejected.
+     */
+    comment?: string;
+};
+
+export type PreparedBookingAttempt = {
+    /**
+     * Random identifier; alone it grants no access.
+     */
+    attemptId: string;
+    /**
+     * Independent cryptographically random secret of at least 256 bits. Never put in URLs or logs; keep only in page memory.
+     */
+    attemptSecret: string;
+    state: 'PREPARED';
+};
+
 export type ProfileCommand = {
     /**
      * 1–100 Unicode code points after trimming and collapsing Unicode space separators. Control, nonprintable and invisible control characters are rejected before normalization.
@@ -435,6 +468,45 @@ export type GetPublicBookingPageResponses = {
 };
 
 export type GetPublicBookingPageResponse = GetPublicBookingPageResponses[keyof GetPublicBookingPageResponses];
+
+export type PrepareBookingAttemptData = {
+    body: PrepareBookingAttemptCommand;
+    path: {
+        username: string;
+    };
+    query?: never;
+    url: '/api/public/{username}/booking-attempts';
+};
+
+export type PrepareBookingAttemptErrors = {
+    /**
+     * The server could not understand the request due to invalid syntax.
+     */
+    400: ApiError;
+    /**
+     * The server cannot find the requested resource.
+     */
+    404: ApiError;
+    /**
+     * The request conflicts with the current state of the server.
+     */
+    409: ApiError;
+    /**
+     * Client error
+     */
+    422: ApiError;
+};
+
+export type PrepareBookingAttemptError = PrepareBookingAttemptErrors[keyof PrepareBookingAttemptErrors];
+
+export type PrepareBookingAttemptResponses = {
+    /**
+     * The request has succeeded and a new resource has been created as a result.
+     */
+    201: PreparedBookingAttempt;
+};
+
+export type PrepareBookingAttemptResponse = PrepareBookingAttemptResponses[keyof PrepareBookingAttemptResponses];
 
 export type GetPublicMeetingTypeData = {
     body?: never;

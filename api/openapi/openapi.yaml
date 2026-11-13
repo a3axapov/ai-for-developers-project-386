@@ -322,6 +322,62 @@ paths:
                 $ref: '#/components/schemas/ApiError'
       tags:
         - Public
+  /api/public/{username}/booking-attempts:
+    post:
+      operationId: prepareBookingAttempt
+      description: Prepare immutable data without reserving time. Losing this response cannot leave a hidden booking. Availability must be rechecked on later submission.
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: The request has succeeded and a new resource has been created as a result.
+          headers:
+            Cache-Control:
+              required: true
+              schema:
+                type: string
+                enum:
+                  - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PreparedBookingAttempt'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: The request conflicts with the current state of the server.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      tags:
+        - Public
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PrepareBookingAttemptCommand'
   /api/public/{username}/meeting-types/{id}:
     get:
       operationId: getPublicMeetingType
@@ -582,6 +638,49 @@ components:
           type: string
           description: Same-origin public booking page path.
       description: The single calendar owner's current profile.
+    PrepareBookingAttemptCommand:
+      type: object
+      required:
+        - meetingTypeId
+        - conditionsToken
+        - startsAt
+        - guestName
+        - guestEmail
+      properties:
+        meetingTypeId:
+          type: string
+        conditionsToken:
+          type: string
+        startsAt:
+          type: string
+          format: date-time
+        guestName:
+          type: string
+          description: 1–100 Unicode code points after trimming and collapsing spaces; controls and invisible characters are rejected.
+        guestEmail:
+          type: string
+          description: One syntactically valid address, at most 254 Unicode code points after trimming edge spaces.
+        comment:
+          type: string
+          description: At most 2000 Unicode code points. Newlines are allowed, other controls and invisible characters are rejected.
+      description: Immutable future booking data. Preparation creates no booking and reserves no time.
+    PreparedBookingAttempt:
+      type: object
+      required:
+        - attemptId
+        - attemptSecret
+        - state
+      properties:
+        attemptId:
+          type: string
+          description: Random identifier; alone it grants no access.
+        attemptSecret:
+          type: string
+          description: Independent cryptographically random secret of at least 256 bits. Never put in URLs or logs; keep only in page memory.
+        state:
+          type: string
+          enum:
+            - PREPARED
     ProfileCommand:
       type: object
       required:

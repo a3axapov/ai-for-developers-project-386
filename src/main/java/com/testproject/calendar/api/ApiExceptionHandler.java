@@ -29,6 +29,9 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiError> handleMalformedBody(HttpServletRequest request) {
+        if (request.getRequestURI().startsWith("/api/public/")) {
+            return malformedPublicRequest();
+        }
         var raw = request.getAttribute(CommandBodyAdvice.RAW_BODY);
         return handleFailure(owner.malformedResult(request.getHeader("Idempotency-Key"),
                 request.getRequestURI(), raw == null ? "" : raw.toString()));
@@ -42,8 +45,16 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
     public ResponseEntity<ApiError> handleNonJsonBody(HttpServletRequest request) throws IOException {
+        if (request.getRequestURI().startsWith("/api/public/")) {
+            return malformedPublicRequest();
+        }
         var body = new String(request.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
         return handleFailure(owner.malformedResult(request.getHeader("Idempotency-Key"),
                 request.getRequestURI(), body));
+    }
+
+    private ResponseEntity<ApiError> malformedPublicRequest() {
+        return handleFailure(new ApiFailure(400,
+                new ApiError("MALFORMED_REQUEST", "Некорректный формат запроса.")));
     }
 }

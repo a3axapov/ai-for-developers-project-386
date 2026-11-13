@@ -7,6 +7,8 @@ package com.testproject.calendar.generated.api;
 
 import com.testproject.calendar.generated.model.ApiError;
 import com.testproject.calendar.generated.model.BookingEntry;
+import com.testproject.calendar.generated.model.PrepareBookingAttemptCommand;
+import com.testproject.calendar.generated.model.PreparedBookingAttempt;
 import com.testproject.calendar.generated.model.PublicBookingPage;
 import com.testproject.calendar.generated.model.PublicMeetingTypePage;
 import com.testproject.calendar.generated.model.PublicSlots;
@@ -101,6 +103,31 @@ public interface PublicApi {
     ResponseEntity<PublicSlots> getPublicSlots(
          @PathVariable("username") String username,
          @PathVariable("id") String id
+    );
+
+
+    String PATH_PREPARE_BOOKING_ATTEMPT = "/api/public/{username}/booking-attempts";
+    /**
+     * POST /api/public/{username}/booking-attempts
+     * Prepare immutable data without reserving time. Losing this response cannot leave a hidden booking. Availability must be rechecked on later submission.
+     *
+     * @param username  (required)
+     * @param prepareBookingAttemptCommand  (required)
+     * @return The request has succeeded and a new resource has been created as a result. (status code 201)
+     *         or The server could not understand the request due to invalid syntax. (status code 400)
+     *         or The server cannot find the requested resource. (status code 404)
+     *         or The request conflicts with the current state of the server. (status code 409)
+     *         or Client error (status code 422)
+     */
+    @RequestMapping(
+        method = RequestMethod.POST,
+        value = PublicApi.PATH_PREPARE_BOOKING_ATTEMPT,
+        produces = { "application/json" },
+        consumes = { "application/json" }
+    )
+    ResponseEntity<PreparedBookingAttempt> prepareBookingAttempt(
+         @PathVariable("username") String username,
+         @RequestBody PrepareBookingAttemptCommand prepareBookingAttemptCommand
     );
 
 }

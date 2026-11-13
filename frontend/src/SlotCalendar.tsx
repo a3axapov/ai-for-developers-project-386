@@ -41,7 +41,13 @@ function browserZone(fallback: string) {
   return fallback;
 }
 
-function Calendar({ slots }: { slots: PublicSlots }) {
+function Calendar({
+  slots,
+  renderSelection,
+}: {
+  slots: PublicSlots;
+  renderSelection?: (slot: Slot) => React.ReactNode;
+}) {
   const [zone, setZone] = useState(() => browserZone(slots.ownerTimeZone));
   const [date, setDate] = useState('');
   const [selected, setSelected] = useState<Slot>();
@@ -151,6 +157,7 @@ function Calendar({ slots }: { slots: PublicSlots }) {
           время.
         </p>
       )}
+      {selected && renderSelection?.(selected)}
     </>
   );
 }
@@ -159,10 +166,12 @@ export function SlotCalendar({
   username,
   id,
   onUnavailable,
+  renderSelection,
 }: {
   username: string;
   id: string;
   onUnavailable: (reason: 'not-found' | 'disabled') => void;
+  renderSelection?: (slot: Slot) => React.ReactNode;
 }) {
   const [slots, setSlots] = useState<PublicSlots>();
   const [failed, setFailed] = useState(false);
@@ -199,5 +208,5 @@ export function SlotCalendar({
       </>
     );
   if (!slots) return <p role="status">Загрузка свободного времени…</p>;
-  return <Calendar slots={slots} />;
+  return <Calendar slots={slots} renderSelection={renderSelection} />;
 }

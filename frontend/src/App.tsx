@@ -1,5 +1,6 @@
 import { OwnerPage } from './OwnerPage';
 import { BookingPage } from './BookingPage';
+import { useEffect, useState } from 'react';
 
 const steps = [
   {
@@ -111,7 +112,12 @@ function HomePage() {
 }
 
 export function App() {
-  const path = window.location.pathname;
+  const [path, setPath] = useState(window.location.pathname);
+  useEffect(() => {
+    const changed = () => setPath(window.location.pathname);
+    window.addEventListener('popstate', changed);
+    return () => window.removeEventListener('popstate', changed);
+  }, []);
   const bookingPath = /^\/booking\/([^/]+)(?:\/([^/]+))?$/.exec(path);
 
   return (

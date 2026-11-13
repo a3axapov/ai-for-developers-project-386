@@ -7,6 +7,25 @@
   -webkit-font-smoothing: antialiased;
 }
 
+.guest-form {
+  max-width: 40rem;
+  margin-block: 2rem;
+  overflow-wrap: anywhere;
+}
+
+.guest-form label {
+  display: block;
+}
+
+.guest-form input,
+.guest-form textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 0.7rem;
+  margin-bottom: 1rem;
+  font: inherit;
+}
+
 * {
   box-sizing: border-box;
 }

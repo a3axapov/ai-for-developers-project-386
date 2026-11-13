@@ -2,6 +2,8 @@ package com.testproject.calendar.api;
 
 import com.testproject.calendar.generated.api.PublicApi;
 import com.testproject.calendar.generated.model.BookingEntry;
+import com.testproject.calendar.generated.model.PrepareBookingAttemptCommand;
+import com.testproject.calendar.generated.model.PreparedBookingAttempt;
 import com.testproject.calendar.generated.model.PublicBookingPage;
 import com.testproject.calendar.generated.model.PublicMeetingTypePage;
 import com.testproject.calendar.generated.model.PublicSlots;
@@ -20,6 +22,13 @@ public class PublicController implements PublicApi {
     public PublicController(OwnerState owner, SlotAvailability availability) {
         this.owner = owner;
         this.availability = availability;
+    }
+
+    @Override
+    public ResponseEntity<PreparedBookingAttempt> prepareBookingAttempt(String username,
+            PrepareBookingAttemptCommand command) {
+        return ResponseEntity.status(201).cacheControl(CacheControl.noStore())
+                .body(owner.prepareAttempt(username, command));
     }
 
     @Override

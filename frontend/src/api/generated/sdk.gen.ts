@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { CreateMeetingTypeData, CreateMeetingTypeErrors, CreateMeetingTypeResponses, GetBookingEntryData, GetBookingEntryResponses, GetHealthData, GetHealthResponses, GetMeetingTypeData, GetMeetingTypeErrors, GetMeetingTypeResponses, GetOwnerOperationData, GetOwnerOperationErrors, GetOwnerOperationResponses, GetOwnerProfileData, GetOwnerProfileResponses, GetPublicBookingPageData, GetPublicBookingPageErrors, GetPublicBookingPageResponses, GetPublicMeetingTypeData, GetPublicMeetingTypeErrors, GetPublicMeetingTypeResponses, GetPublicSlotsData, GetPublicSlotsErrors, GetPublicSlotsResponses, ListMeetingTypesData, ListMeetingTypesResponses, SetPublicBookingData, SetPublicBookingErrors, SetPublicBookingResponses, UpdateOwnerProfileData, UpdateOwnerProfileErrors, UpdateOwnerProfileResponses } from './types.gen';
+import type { CreateMeetingTypeData, CreateMeetingTypeErrors, CreateMeetingTypeResponses, GetBookingEntryData, GetBookingEntryResponses, GetHealthData, GetHealthResponses, GetMeetingTypeData, GetMeetingTypeErrors, GetMeetingTypeResponses, GetOwnerOperationData, GetOwnerOperationErrors, GetOwnerOperationResponses, GetOwnerProfileData, GetOwnerProfileResponses, GetPublicBookingPageData, GetPublicBookingPageErrors, GetPublicBookingPageResponses, GetPublicMeetingTypeData, GetPublicMeetingTypeErrors, GetPublicMeetingTypeResponses, GetPublicSlotsData, GetPublicSlotsErrors, GetPublicSlotsResponses, ListMeetingTypesData, ListMeetingTypesResponses, PrepareBookingAttemptData, PrepareBookingAttemptErrors, PrepareBookingAttemptResponses, SetPublicBookingData, SetPublicBookingErrors, SetPublicBookingResponses, UpdateOwnerProfileData, UpdateOwnerProfileErrors, UpdateOwnerProfileResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -79,6 +79,18 @@ export const getBookingEntry = <ThrowOnError extends boolean = false>(options?: 
  * Read the general public booking page.
  */
 export const getPublicBookingPage = <ThrowOnError extends boolean = false>(options: Options<GetPublicBookingPageData, ThrowOnError>): RequestResult<GetPublicBookingPageResponses, GetPublicBookingPageErrors, ThrowOnError> => (options.client ?? client).get<GetPublicBookingPageResponses, GetPublicBookingPageErrors, ThrowOnError>({ url: '/api/public/{username}', ...options });
+
+/**
+ * Prepare immutable data without reserving time. Losing this response cannot leave a hidden booking. Availability must be rechecked on later submission.
+ */
+export const prepareBookingAttempt = <ThrowOnError extends boolean = false>(options: Options<PrepareBookingAttemptData, ThrowOnError>): RequestResult<PrepareBookingAttemptResponses, PrepareBookingAttemptErrors, ThrowOnError> => (options.client ?? client).post<PrepareBookingAttemptResponses, PrepareBookingAttemptErrors, ThrowOnError>({
+    url: '/api/public/{username}/booking-attempts',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
 
 /**
  * Read explicitly selected conditions. Unknown username/ID returns 404 even when booking is disabled.

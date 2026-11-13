@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { SlotCalendar } from './SlotCalendar';
+import { GuestForm, type GuestContacts } from './GuestForm';
 import {
   getBookingEntry,
   getPublicBookingPage,
@@ -39,6 +40,15 @@ export function BookingPage({
 }) {
   const [state, setState] = useState<PageState>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  const [contacts, setContacts] = useState<GuestContacts>({
+    guestName: '',
+    guestEmail: '',
+    comment: '',
+  });
+  const shownType =
+    state.status === 'ready' && 'meetingType' in state.page
+      ? state.page.meetingType
+      : undefined;
   const unavailable = useCallback((reason: 'not-found' | 'disabled') => {
     setState((previous) => {
       if (reason === 'not-found') return { status: 'not-found' };
@@ -96,7 +106,32 @@ export function BookingPage({
   }, [username, meetingTypeId, attempt]);
 
   return (
-    <section className="placeholder" aria-labelledby="page-title">
+    <section
+      className="placeholder"
+      aria-labelledby="page-title"
+      onClick={(event) => {
+        if (
+          event.button !== 0 ||
+          event.ctrlKey ||
+          event.metaKey ||
+          event.shiftKey ||
+          event.altKey
+        )
+          return;
+        const link =
+          event.target instanceof Element ? event.target.closest('a') : null;
+        if (
+          !link ||
+          link.target ||
+          !link.pathname.startsWith(`/booking/${encodeURIComponent(username!)}`)
+        )
+          return;
+        event.preventDefault();
+        setState({ status: 'loading' });
+        window.history.pushState(null, '', link.href);
+        window.dispatchEvent(new PopStateEvent('popstate'));
+      }}
+    >
       <p className="eyebrow">Онлайн-запись</p>
       <h1 id="page-title">
         {state.status === 'ready'
@@ -108,7 +143,18 @@ export function BookingPage({
       {state.status === 'loading' && <p role="status">Загрузка страницы…</p>}
       {state.status === 'ready' &&
         (state.page.state === 'BOOKING_DISABLED' ? (
-          <p>Запись временно недоступна</p>
+          <>
+            <p>Запись временно недоступна</p>
+            <button
+              className="button"
+              onClick={() => {
+                setState({ status: 'loading' });
+                setAttempt((previous) => previous + 1);
+              }}
+            >
+              Обновить доступность
+            </button>
+          </>
         ) : 'meetingType' in state.page && state.page.meetingType ? (
           <>
             <h2>Выбранный тип встречи</h2>
@@ -120,6 +166,18 @@ export function BookingPage({
               username={username!}
               id={meetingTypeId!}
               onUnavailable={unavailable}
+              renderSelection={(slot) => (
+                <GuestForm
+                  key={`${slot.startsAt}/${shownType!.conditionsToken}`}
+                  username={username!}
+                  meetingTypeId={meetingTypeId!}
+                  conditionsToken={shownType!.conditionsToken}
+                  slot={slot}
+                  contacts={contacts}
+                  onChange={setContacts}
+                  onUnavailable={unavailable}
+                />
+              )}
             />
           </>
         ) : 'items' in state.page && state.page.items?.length ? (

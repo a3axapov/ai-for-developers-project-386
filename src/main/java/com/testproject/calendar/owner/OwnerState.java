@@ -1,6 +1,8 @@
 package com.testproject.calendar.owner;
 
 import com.testproject.calendar.api.ApiFailure;
+import com.testproject.calendar.generated.model.PrepareBookingAttemptCommand;
+import com.testproject.calendar.generated.model.PreparedBookingAttempt;
 import com.testproject.calendar.availability.SlotAvailability;
 import com.testproject.calendar.generated.model.PublicSlots;
 import com.testproject.calendar.generated.model.ApiError;
@@ -39,6 +41,115 @@ public class OwnerState {
     private long version = 1;
     private final Map<String, SavedCommand> operations = new HashMap<>();
     private final Map<String, MeetingType> meetingTypes = new LinkedHashMap<>();
+    private final java.security.SecureRandom random = new java.security.SecureRandom();
+    private final Map<String, PreparedAttempt> attempts = new HashMap<>();
+
+    // Only immutable values, never the mutable transport command. No generated toString containing secrets.
+    private static final class PreparedAttempt {
+        private final String secret;
+        private final String username;
+        private final String meetingTypeId;
+        private final String conditionsToken;
+        private final java.time.OffsetDateTime startsAt;
+        private final String guestName;
+        private final String guestEmail;
+        private final String comment;
+
+        private PreparedAttempt(String secret, String username, PrepareBookingAttemptCommand command) {
+            this.secret = secret;
+            this.username = username;
+            this.meetingTypeId = command.getMeetingTypeId();
+            this.conditionsToken = command.getConditionsToken();
+            this.startsAt = command.getStartsAt();
+            this.guestName = command.getGuestName();
+            this.guestEmail = command.getGuestEmail();
+            this.comment = command.getComment();
+        }
+    }
+
+    public synchronized PreparedBookingAttempt prepareAttempt(String requestedUsername,
+            PrepareBookingAttemptCommand command) {
+        requireUsername(requestedUsername);
+        var normalizedName = normalize(command.getGuestName());
+        var email = command.getGuestEmail() == null ? ""
+                : command.getGuestEmail().replaceAll("^\\p{Zs}+|\\p{Zs}+$", "");
+        var comment = command.getComment() == null ? "" : command.getComment();
+        var errors = new ArrayList<FieldError>();
+        if (command.getMeetingTypeId() == null || !command.getMeetingTypeId().matches("[A-Za-z0-9-]{1,64}")) {
+            errors.add(new FieldError("meetingTypeId", "INVALID_VALUE", "Выберите тип встречи."));
+        }
+        if (command.getConditionsToken() == null || command.getConditionsToken().isBlank()) {
+            errors.add(new FieldError("conditionsToken", "INVALID_VALUE", "Загрузите условия встречи."));
+        }
+        if (command.getStartsAt() == null) {
+            errors.add(new FieldError("startsAt", "INVALID_VALUE", "Выберите время встречи."));
+        }
+        if (!errors.isEmpty()) {
+            throw new ApiFailure(422, new ApiError("VALIDATION_FAILED", "Проверьте данные формы.").fieldErrors(errors));
+        }
+        var type = meetingType(command.getMeetingTypeId());
+        if (!bookingEnabled) {
+            throw new ApiFailure(409, new ApiError("BOOKING_DISABLED", "Запись временно недоступна"));
+        }
+        if (type.getArchived()) {
+            throw new ApiFailure(409, new ApiError("TYPE_ARCHIVED", "Запись на этот тип встречи прекращена"));
+        }
+        if (!conditionsToken(type).equals(command.getConditionsToken())) {
+            throw new ApiFailure(409, new ApiError("CONDITIONS_CHANGED",
+                    "Условия встречи изменились. Выберите время заново."));
+        }
+        if (!printable(command.getGuestName()) || normalizedName.isEmpty()
+                || normalizedName.codePointCount(0, normalizedName.length()) > 100) {
+            errors.add(new FieldError("guestName", "INVALID_VALUE", "Введите имя: 1–100 печатных символов."));
+        }
+        if (!printable(command.getGuestEmail()) || email.codePointCount(0, email.length()) > 254
+                || !validEmail(email)) {
+            errors.add(new FieldError("guestEmail", "INVALID_VALUE", "Введите один email длиной до 254 символов."));
+        }
+        if (comment.codePointCount(0, comment.length()) > 2000
+                || !comment.replace("\r\n", "\n").codePoints().allMatch(code -> code == '\n' || printable(code))) {
+            errors.add(new FieldError("comment", "INVALID_VALUE",
+                    "Введите до 2000 символов; разрешены переносы, но не управляющие и невидимые символы."));
+        }
+        if (!errors.isEmpty()) {
+            throw new ApiFailure(422, new ApiError("VALIDATION_FAILED", "Проверьте данные формы.").fieldErrors(errors));
+        }
+        var normalized = new PrepareBookingAttemptCommand(command.getMeetingTypeId(), command.getConditionsToken(),
+                command.getStartsAt(), normalizedName, email).comment(comment);
+        var id = randomToken();
+        while (attempts.containsKey(id)) {
+            id = randomToken();
+        }
+        var secret = randomToken();
+        attempts.put(id, new PreparedAttempt(secret, requestedUsername, normalized));
+        return new PreparedBookingAttempt(id, secret, PreparedBookingAttempt.StateEnum.PREPARED);
+    }
+
+    private boolean validEmail(String email) {
+        int at = email.lastIndexOf('@');
+        if (at < 1 || at == email.length() - 1) {
+            return false;
+        }
+        var local = email.substring(0, at);
+        if (local.codePointCount(0, local.length()) > 64 || !local.matches(
+                "[\\p{L}\\p{N}!#$%&'*+/=?^_`{|}~-]+(?:\\.[\\p{L}\\p{N}!#$%&'*+/=?^_`{|}~-]+)*"
+                + "|\"(?:[^\"\\\\]|\\\\.)+\"")) {
+            return false;
+        }
+        try {
+            var domain = java.net.IDN.toASCII(email.substring(at + 1), java.net.IDN.USE_STD3_ASCII_RULES);
+            return domain.matches("[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?"
+                    + "(?:\\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*");
+        } catch (IllegalArgumentException exception) {
+            return false;
+        }
+    }
+
+    private String randomToken() {
+        var bytes = new byte[32];
+        random.nextBytes(bytes);
+        return HexFormat.of().formatHex(bytes);
+    }
 
     private record SavedCommand(Object request, Object result, ApiFailure failure) {
         OwnerProfile profile() {

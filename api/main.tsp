@@ -282,6 +282,51 @@ model PublicBookingCommand {
   @minValue(1) expectedVersion: int64;
 }
 
+@doc("Immutable future booking data. Preparation creates no booking and reserves no time.")
+model PrepareBookingAttemptCommand {
+  meetingTypeId: string;
+  conditionsToken: string;
+  startsAt: offsetDateTime;
+
+  @doc("1–100 Unicode code points after trimming and collapsing spaces; controls and invisible characters are rejected.")
+  guestName: string;
+
+  @doc("One syntactically valid address, at most 254 Unicode code points after trimming edge spaces.")
+  guestEmail: string;
+
+  @doc("At most 2000 Unicode code points. Newlines are allowed, other controls and invisible characters are rejected.")
+  comment?: string;
+}
+
+model PreparedBookingAttempt {
+  @doc("Random identifier; alone it grants no access.")
+  attemptId: string;
+
+  @doc("Independent cryptographically random secret of at least 256 bits. Never put in URLs or logs; keep only in page memory.")
+  attemptSecret: string;
+
+  state: "PREPARED";
+}
+
+@post
+@route("/public/{username}/booking-attempts")
+@tag("Public")
+@operationId("prepareBookingAttempt")
+@doc("Prepare immutable data without reserving time. Losing this response cannot leave a hidden booking. Availability must be rechecked on later submission.")
+op prepareBookingAttempt(
+  @path username: string,
+  @body command: PrepareBookingAttemptCommand,
+):
+  | {
+      @statusCode statusCode: 201;
+      @header("Cache-Control") cacheControl: "no-store";
+      @body body: PreparedBookingAttempt;
+    }
+  | InvalidData
+  | MalformedRequest
+  | PageNotFound
+  | StateConflict;
+
 model ProfileCommand {
   @doc("1–100 Unicode code points after trimming and collapsing Unicode space separators. Control, nonprintable and invisible control characters are rejected before normalization.")
   name: string;
