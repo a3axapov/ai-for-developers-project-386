@@ -186,20 +186,31 @@ for (const action of ['confirm', 'reject'] as const) {
     await expect(
       page.getByRole('button', { name: 'Создать тип встречи', exact: true }),
     ).toBeDisabled();
+    let releaseRecovery!: () => void;
+    const recoveryReleased = new Promise<void>((resolve) => {
+      releaseRecovery = resolve;
+    });
     await page.route('**/api/owner/operations/*', async (route) => {
       await route.fetch();
+      await recoveryReleased;
       await route.abort('failed');
     });
     const recover = bookings.getByRole('button', {
       name: 'Выяснить результат решения',
     });
     await recover.click();
+    // Keep the real operation read in flight: the existing alert alone cannot
+    // prove that this recovery attempt has finished.
+    await expect(recover).toBeDisabled();
     await expect(bookings.getByRole('alert')).toContainText(
       'Исход операции неизвестен',
     );
     await expect(details.getByText('Версия: 1', { exact: true })).toBeVisible();
     await page.unroute('**/api/owner/operations/*');
+    releaseRecovery();
+    await expect(recover).toBeEnabled();
     await recover.focus();
+    await expect(recover).toBeFocused();
     await page.keyboard.press('Enter');
     await expect(details.getByText('Версия: 2', { exact: true })).toBeVisible();
     await expect(
