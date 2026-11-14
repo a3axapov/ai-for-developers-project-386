@@ -29,7 +29,7 @@ export function GuestForm({
   slot: Slot;
   contacts: GuestContacts;
   onChange: (contacts: GuestContacts) => void;
-  onUnavailable: (reason: 'not-found' | 'disabled') => void;
+  onUnavailable: (reason: 'not-found' | 'disabled' | 'archived') => void;
   onRefusal: (message: string) => void;
   onSubmitAttempt: (attempt: PreparedBookingAttempt) => void;
 }) {
@@ -67,6 +67,8 @@ export function GuestForm({
             onUnavailable('not-found');
           else if (result.error?.code === 'BOOKING_DISABLED')
             onUnavailable('disabled');
+          else if (result.error?.code === 'TYPE_ARCHIVED')
+            onUnavailable('archived');
           else if (result.response.status === 409 && result.error)
             onRefusal(result.error.message);
           else {

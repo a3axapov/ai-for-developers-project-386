@@ -3,6 +3,8 @@ package com.testproject.calendar.api;
 import com.testproject.calendar.generated.model.PublicBookingCommand;
 import com.testproject.calendar.generated.model.ProfileCommand;
 import com.testproject.calendar.generated.model.CreateMeetingTypeCommand;
+import com.testproject.calendar.generated.model.UpdateMeetingTypeCommand;
+import com.testproject.calendar.generated.model.ArchiveMeetingTypeCommand;
 import com.testproject.calendar.generated.model.BookingDecisionCommand;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.ByteArrayInputStream;
@@ -32,7 +34,8 @@ public class CommandBodyAdvice extends RequestBodyAdviceAdapter {
     public boolean supports(MethodParameter parameter, Type targetType,
             Class<? extends HttpMessageConverter<?>> converterType) {
         return targetType == PublicBookingCommand.class || targetType == ProfileCommand.class
-                || targetType == CreateMeetingTypeCommand.class || targetType == BookingDecisionCommand.class;
+                || targetType == CreateMeetingTypeCommand.class || targetType == BookingDecisionCommand.class
+                || targetType == UpdateMeetingTypeCommand.class || targetType == ArchiveMeetingTypeCommand.class;
     }
 
     @Override

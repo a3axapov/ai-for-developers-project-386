@@ -6,7 +6,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.testproject.calendar.generated.model.BookingDetails;
 import com.testproject.calendar.generated.model.FieldError;
+import com.testproject.calendar.generated.model.MeetingType;
 import com.testproject.calendar.generated.model.OwnerProfile;
+import com.testproject.calendar.generated.model.PublicMeetingType;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -31,6 +33,10 @@ public class ApiError {
   private @Nullable OwnerProfile currentProfile;
 
   private @Nullable BookingDetails currentBooking;
+
+  private @Nullable MeetingType currentMeetingType;
+
+  private @Nullable PublicMeetingType currentConditions;
 
   private @Nullable List<FieldError> fieldErrors;
 
@@ -122,6 +128,44 @@ public class ApiError {
     this.currentBooking = currentBooking;
   }
 
+  public ApiError currentMeetingType(@Nullable MeetingType currentMeetingType) {
+    this.currentMeetingType = currentMeetingType;
+    return this;
+  }
+
+  /**
+   * Get currentMeetingType
+   * @return currentMeetingType
+   */
+  @JsonProperty("currentMeetingType")
+  public @Nullable MeetingType getCurrentMeetingType() {
+    return currentMeetingType;
+  }
+
+  @JsonProperty("currentMeetingType")
+  public void setCurrentMeetingType(@Nullable MeetingType currentMeetingType) {
+    this.currentMeetingType = currentMeetingType;
+  }
+
+  public ApiError currentConditions(@Nullable PublicMeetingType currentConditions) {
+    this.currentConditions = currentConditions;
+    return this;
+  }
+
+  /**
+   * Get currentConditions
+   * @return currentConditions
+   */
+  @JsonProperty("currentConditions")
+  public @Nullable PublicMeetingType getCurrentConditions() {
+    return currentConditions;
+  }
+
+  @JsonProperty("currentConditions")
+  public void setCurrentConditions(@Nullable PublicMeetingType currentConditions) {
+    this.currentConditions = currentConditions;
+  }
+
   public ApiError fieldErrors(@Nullable List<FieldError> fieldErrors) {
     this.fieldErrors = fieldErrors;
     return this;
@@ -162,12 +206,14 @@ public class ApiError {
         Objects.equals(this.message, apiError.message) &&
         Objects.equals(this.currentProfile, apiError.currentProfile) &&
         Objects.equals(this.currentBooking, apiError.currentBooking) &&
+        Objects.equals(this.currentMeetingType, apiError.currentMeetingType) &&
+        Objects.equals(this.currentConditions, apiError.currentConditions) &&
         Objects.equals(this.fieldErrors, apiError.fieldErrors);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(code, message, currentProfile, currentBooking, fieldErrors);
+    return Objects.hash(code, message, currentProfile, currentBooking, currentMeetingType, currentConditions, fieldErrors);
   }
 
   @Override
@@ -178,6 +224,8 @@ public class ApiError {
     sb.append("    message: ").append(toIndentedString(message)).append("\n");
     sb.append("    currentProfile: ").append(toIndentedString(currentProfile)).append("\n");
     sb.append("    currentBooking: ").append(toIndentedString(currentBooking)).append("\n");
+    sb.append("    currentMeetingType: ").append(toIndentedString(currentMeetingType)).append("\n");
+    sb.append("    currentConditions: ").append(toIndentedString(currentConditions)).append("\n");
     sb.append("    fieldErrors: ").append(toIndentedString(fieldErrors)).append("\n");
     sb.append("}");
     return sb.toString();

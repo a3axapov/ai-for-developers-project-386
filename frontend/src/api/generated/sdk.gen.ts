@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { ConfirmOwnerBookingData, ConfirmOwnerBookingErrors, ConfirmOwnerBookingResponses, CreateMeetingTypeData, CreateMeetingTypeErrors, CreateMeetingTypeResponses, GetBookingAttemptData, GetBookingAttemptErrors, GetBookingAttemptResponses, GetBookingEntryData, GetBookingEntryResponses, GetBookingResultData, GetBookingResultErrors, GetBookingResultResponses, GetHealthData, GetHealthResponses, GetMeetingTypeData, GetMeetingTypeErrors, GetMeetingTypeResponses, GetOwnerBookingData, GetOwnerBookingErrors, GetOwnerBookingResponses, GetOwnerCalendarData, GetOwnerCalendarErrors, GetOwnerCalendarResponses, GetOwnerOperationData, GetOwnerOperationErrors, GetOwnerOperationResponses, GetOwnerProfileData, GetOwnerProfileResponses, GetPublicBookingPageData, GetPublicBookingPageErrors, GetPublicBookingPageResponses, GetPublicMeetingTypeData, GetPublicMeetingTypeErrors, GetPublicMeetingTypeResponses, GetPublicSlotsData, GetPublicSlotsErrors, GetPublicSlotsResponses, ListMeetingTypesData, ListMeetingTypesResponses, ListOwnerBookingsData, ListOwnerBookingsErrors, ListOwnerBookingsResponses, PrepareBookingAttemptData, PrepareBookingAttemptErrors, PrepareBookingAttemptResponses, RejectOwnerBookingData, RejectOwnerBookingErrors, RejectOwnerBookingResponses, SetPublicBookingData, SetPublicBookingErrors, SetPublicBookingResponses, SubmitBookingAttemptData, SubmitBookingAttemptErrors, SubmitBookingAttemptResponses, UpdateOwnerProfileData, UpdateOwnerProfileErrors, UpdateOwnerProfileResponses } from './types.gen';
+import type { ArchiveMeetingTypeData, ArchiveMeetingTypeErrors, ArchiveMeetingTypeResponses, ConfirmOwnerBookingData, ConfirmOwnerBookingErrors, ConfirmOwnerBookingResponses, CreateMeetingTypeData, CreateMeetingTypeErrors, CreateMeetingTypeResponses, GetBookingAttemptData, GetBookingAttemptErrors, GetBookingAttemptResponses, GetBookingEntryData, GetBookingEntryResponses, GetBookingResultData, GetBookingResultErrors, GetBookingResultResponses, GetHealthData, GetHealthResponses, GetMeetingTypeData, GetMeetingTypeErrors, GetMeetingTypeResponses, GetOwnerBookingData, GetOwnerBookingErrors, GetOwnerBookingResponses, GetOwnerCalendarData, GetOwnerCalendarErrors, GetOwnerCalendarResponses, GetOwnerOperationData, GetOwnerOperationErrors, GetOwnerOperationResponses, GetOwnerProfileData, GetOwnerProfileResponses, GetPublicBookingPageData, GetPublicBookingPageErrors, GetPublicBookingPageResponses, GetPublicMeetingTypeData, GetPublicMeetingTypeErrors, GetPublicMeetingTypeResponses, GetPublicSlotsData, GetPublicSlotsErrors, GetPublicSlotsResponses, ListMeetingTypesData, ListMeetingTypesResponses, ListOwnerBookingsData, ListOwnerBookingsErrors, ListOwnerBookingsResponses, PrepareBookingAttemptData, PrepareBookingAttemptErrors, PrepareBookingAttemptResponses, RejectOwnerBookingData, RejectOwnerBookingErrors, RejectOwnerBookingResponses, SetPublicBookingData, SetPublicBookingErrors, SetPublicBookingResponses, SubmitBookingAttemptData, SubmitBookingAttemptErrors, SubmitBookingAttemptResponses, UpdateMeetingTypeData, UpdateMeetingTypeErrors, UpdateMeetingTypeResponses, UpdateOwnerProfileData, UpdateOwnerProfileErrors, UpdateOwnerProfileResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -89,6 +89,24 @@ export const createMeetingType = <ThrowOnError extends boolean = false>(options:
 });
 
 export const getMeetingType = <ThrowOnError extends boolean = false>(options: Options<GetMeetingTypeData, ThrowOnError>): RequestResult<GetMeetingTypeResponses, GetMeetingTypeErrors, ThrowOnError> => (options.client ?? client).get<GetMeetingTypeResponses, GetMeetingTypeErrors, ThrowOnError>({ url: '/api/owner/meeting-types/{id}', ...options });
+
+export const updateMeetingType = <ThrowOnError extends boolean = false>(options: Options<UpdateMeetingTypeData, ThrowOnError>): RequestResult<UpdateMeetingTypeResponses, UpdateMeetingTypeErrors, ThrowOnError> => (options.client ?? client).put<UpdateMeetingTypeResponses, UpdateMeetingTypeErrors, ThrowOnError>({
+    url: '/api/owner/meeting-types/{id}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+export const archiveMeetingType = <ThrowOnError extends boolean = false>(options: Options<ArchiveMeetingTypeData, ThrowOnError>): RequestResult<ArchiveMeetingTypeResponses, ArchiveMeetingTypeErrors, ThrowOnError> => (options.client ?? client).post<ArchiveMeetingTypeResponses, ArchiveMeetingTypeErrors, ThrowOnError>({
+    url: '/api/owner/meeting-types/{id}/archive',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
 
 /**
  * Recover the saved result without executing the command again.

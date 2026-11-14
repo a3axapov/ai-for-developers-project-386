@@ -476,6 +476,65 @@ paths:
       tags:
         - Owner
   /api/owner/meeting-types/{id}:
+    put:
+      operationId: updateMeetingType
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/IdempotencyKey'
+      responses:
+        '200':
+          description: The request has succeeded.
+          headers:
+            Cache-Control:
+              required: true
+              schema:
+                type: string
+                enum:
+                  - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeetingType'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: The request conflicts with the current state of the server.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      tags:
+        - Owner
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMeetingTypeCommand'
     get:
       operationId: getMeetingType
       parameters:
@@ -506,6 +565,66 @@ paths:
                 $ref: '#/components/schemas/ApiError'
       tags:
         - Owner
+  /api/owner/meeting-types/{id}/archive:
+    post:
+      operationId: archiveMeetingType
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/IdempotencyKey'
+      responses:
+        '200':
+          description: The request has succeeded.
+          headers:
+            Cache-Control:
+              required: true
+              schema:
+                type: string
+                enum:
+                  - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeetingType'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: The request conflicts with the current state of the server.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      tags:
+        - Owner
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ArchiveMeetingTypeCommand'
   /api/owner/operations/{key}:
     get:
       operationId: getOwnerOperation
@@ -863,10 +982,22 @@ components:
           $ref: '#/components/schemas/OwnerProfile'
         currentBooking:
           $ref: '#/components/schemas/BookingDetails'
+        currentMeetingType:
+          $ref: '#/components/schemas/MeetingType'
+        currentConditions:
+          $ref: '#/components/schemas/PublicMeetingType'
         fieldErrors:
           type: array
           items:
             $ref: '#/components/schemas/FieldError'
+    ArchiveMeetingTypeCommand:
+      type: object
+      required:
+        - expectedVersion
+      properties:
+        expectedVersion:
+          type: integer
+          format: int64
     BookingAttemptResult:
       type: object
       required:
@@ -1271,6 +1402,7 @@ components:
           type: string
           enum:
             - BOOKING_DISABLED
+            - TYPE_ARCHIVED
             - OPEN
         meetingType:
           allOf:
@@ -1332,6 +1464,27 @@ components:
           $ref: '#/components/schemas/BookingDetails'
         resultUrl:
           type: string
+    UpdateMeetingTypeCommand:
+      type: object
+      required:
+        - title
+        - description
+        - durationMinutes
+        - requiresApproval
+        - expectedVersion
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        durationMinutes:
+          type: integer
+          format: int32
+        requiresApproval:
+          type: boolean
+        expectedVersion:
+          type: integer
+          format: int64
     WorkingDay:
       type: object
       required:

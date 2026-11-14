@@ -30,6 +30,8 @@ public class PublicMeetingTypePage {
   public enum StateEnum {
     BOOKING_DISABLED("BOOKING_DISABLED"),
     
+    TYPE_ARCHIVED("TYPE_ARCHIVED"),
+    
     OPEN("OPEN");
 
     private final String value;

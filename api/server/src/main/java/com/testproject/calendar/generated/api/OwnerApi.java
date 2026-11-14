@@ -6,6 +6,7 @@
 package com.testproject.calendar.generated.api;
 
 import com.testproject.calendar.generated.model.ApiError;
+import com.testproject.calendar.generated.model.ArchiveMeetingTypeCommand;
 import com.testproject.calendar.generated.model.BookingDecisionCommand;
 import com.testproject.calendar.generated.model.BookingDetails;
 import com.testproject.calendar.generated.model.CreateMeetingTypeCommand;
@@ -19,6 +20,7 @@ import com.testproject.calendar.generated.model.OwnerOperationResult;
 import com.testproject.calendar.generated.model.OwnerProfile;
 import com.testproject.calendar.generated.model.ProfileCommand;
 import com.testproject.calendar.generated.model.PublicBookingCommand;
+import com.testproject.calendar.generated.model.UpdateMeetingTypeCommand;
 import org.springframework.http.ResponseEntity;
 
 import org.springframework.web.bind.annotation.*;
@@ -33,6 +35,32 @@ import jakarta.annotation.Generated;
 
 @RequestMapping("${openapi.calendar.base-path:}")
 public interface OwnerApi {
+
+    String PATH_ARCHIVE_MEETING_TYPE = "/api/owner/meeting-types/{id}/archive";
+    /**
+     * POST /api/owner/meeting-types/{id}/archive
+     *
+     * @param id  (required)
+     * @param idempotencyKey  (required)
+     * @param archiveMeetingTypeCommand  (required)
+     * @return The request has succeeded. (status code 200)
+     *         or The server could not understand the request due to invalid syntax. (status code 400)
+     *         or The server cannot find the requested resource. (status code 404)
+     *         or The request conflicts with the current state of the server. (status code 409)
+     *         or Client error (status code 422)
+     */
+    @RequestMapping(
+        method = RequestMethod.POST,
+        value = OwnerApi.PATH_ARCHIVE_MEETING_TYPE,
+        produces = { "application/json" },
+        consumes = { "application/json" }
+    )
+    ResponseEntity<MeetingType> archiveMeetingType(
+         @PathVariable("id") String id,
+         @RequestHeader(value = "Idempotency-Key", required = true) String idempotencyKey,
+         @RequestBody ArchiveMeetingTypeCommand archiveMeetingTypeCommand
+    );
+
 
     String PATH_CONFIRM_OWNER_BOOKING = "/api/owner/bookings/{id}/confirm";
     /**
@@ -265,6 +293,32 @@ public interface OwnerApi {
     ResponseEntity<OwnerProfile> setPublicBooking(
          @RequestHeader(value = "Idempotency-Key", required = true) String idempotencyKey,
          @RequestBody PublicBookingCommand publicBookingCommand
+    );
+
+
+    String PATH_UPDATE_MEETING_TYPE = "/api/owner/meeting-types/{id}";
+    /**
+     * PUT /api/owner/meeting-types/{id}
+     *
+     * @param id  (required)
+     * @param idempotencyKey  (required)
+     * @param updateMeetingTypeCommand  (required)
+     * @return The request has succeeded. (status code 200)
+     *         or The server could not understand the request due to invalid syntax. (status code 400)
+     *         or The server cannot find the requested resource. (status code 404)
+     *         or The request conflicts with the current state of the server. (status code 409)
+     *         or Client error (status code 422)
+     */
+    @RequestMapping(
+        method = RequestMethod.PUT,
+        value = OwnerApi.PATH_UPDATE_MEETING_TYPE,
+        produces = { "application/json" },
+        consumes = { "application/json" }
+    )
+    ResponseEntity<MeetingType> updateMeetingType(
+         @PathVariable("id") String id,
+         @RequestHeader(value = "Idempotency-Key", required = true) String idempotencyKey,
+         @RequestBody UpdateMeetingTypeCommand updateMeetingTypeCommand
     );
 
 

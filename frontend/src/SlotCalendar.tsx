@@ -131,7 +131,7 @@ export function SlotCalendar({
 }: {
   username: string;
   id: string;
-  onUnavailable: (reason: 'not-found' | 'disabled') => void;
+  onUnavailable: (reason: 'not-found' | 'disabled' | 'archived') => void;
   renderSelection?: (slot: Slot) => React.ReactNode;
 }) {
   const [slots, setSlots] = useState<PublicSlots>();
@@ -146,6 +146,8 @@ export function SlotCalendar({
         else if (result.response?.status === 404) onUnavailable('not-found');
         else if (result.error?.code === 'BOOKING_DISABLED')
           onUnavailable('disabled');
+        else if (result.error?.code === 'TYPE_ARCHIVED')
+          onUnavailable('archived');
         else setFailed(true);
       })
       .catch(() => {

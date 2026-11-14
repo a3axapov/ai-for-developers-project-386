@@ -58,27 +58,31 @@ export function BookingPage({
     state.status === 'ready' && 'meetingType' in state.page
       ? state.page.meetingType
       : undefined;
-  const unavailable = useCallback((reason: 'not-found' | 'disabled') => {
-    setSubmission(undefined);
-    setState((previous) => {
-      if (reason === 'not-found') return { status: 'not-found' };
-      if (previous.status !== 'ready') return previous;
-      return {
-        status: 'ready',
-        page: {
-          ownerName: previous.page.ownerName,
-          ownerTimeZone: previous.page.ownerTimeZone,
-          state: 'BOOKING_DISABLED',
-        },
-      };
-    });
-  }, []);
+  const unavailable = useCallback(
+    (reason: 'not-found' | 'disabled' | 'archived') => {
+      setSubmission(undefined);
+      setState((previous) => {
+        if (reason === 'not-found') return { status: 'not-found' };
+        if (previous.status !== 'ready') return previous;
+        return {
+          status: 'ready',
+          page: {
+            ownerName: previous.page.ownerName,
+            ownerTimeZone: previous.page.ownerTimeZone,
+            state: reason === 'archived' ? 'TYPE_ARCHIVED' : 'BOOKING_DISABLED',
+          },
+        };
+      });
+    },
+    [],
+  );
 
   function definiteFailure(error: ApiError) {
     setSubmission(undefined);
     setRefusal(error.message);
     if (error.code === 'PAGE_NOT_FOUND') unavailable('not-found');
     else if (error.code === 'BOOKING_DISABLED') unavailable('disabled');
+    else if (error.code === 'TYPE_ARCHIVED') unavailable('archived');
     else {
       setState({ status: 'loading' });
       setAttempt((previous) => previous + 1);
@@ -304,6 +308,8 @@ export function BookingPage({
               Обновить доступность
             </button>
           </>
+        ) : state.page.state === 'TYPE_ARCHIVED' ? (
+          <p>Запись на этот тип встречи прекращена</p>
         ) : 'meetingType' in state.page && state.page.meetingType ? (
           <>
             <h2>Выбранный тип встречи</h2>

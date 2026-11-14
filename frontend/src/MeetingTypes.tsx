@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import {
   createMeetingType,
+  updateMeetingType,
+  archiveMeetingType,
   listMeetingTypes,
   getOwnerOperation,
   getOwnerProfile,
@@ -17,6 +19,7 @@ const emptyDraft = {
   requiresApproval: false,
 };
 export type MeetingTypeDraft = typeof emptyDraft;
+export type MeetingTypeEdit = { current: MeetingType; draft: MeetingTypeDraft };
 
 const dayNames = {
   MONDAY: 'Пн',
@@ -35,6 +38,8 @@ export function MeetingTypes({
   onDraftChange,
   onLockChange,
   onProfileLoaded,
+  editing,
+  onEditChange,
 }: {
   bookingUrl: string;
   blocked: boolean;
@@ -42,6 +47,8 @@ export function MeetingTypes({
   onDraftChange: (draft: MeetingTypeDraft) => void;
   onLockChange: (locked: boolean) => void;
   onProfileLoaded: (profile: OwnerProfile) => void;
+  editing: MeetingTypeEdit | undefined;
+  onEditChange: (editing: MeetingTypeEdit | undefined) => void;
 }) {
   const [items, setItems] = useState<MeetingType[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,13 +60,24 @@ export function MeetingTypes({
   const [copyMessage, setCopyMessage] = useState<string>();
   const [pendingKey, setPendingKey] = useState<string>();
   const [unavailable, setUnavailable] = useState(false);
+  const [operation, setOperation] = useState<'create' | 'edit' | 'archive'>(
+    'create',
+  );
+  const activeDraft = editing?.draft ?? draft;
+  const locked = blocked || saving || Boolean(pendingKey);
 
-  function success(item: MeetingType) {
+  function changeDraft(value: MeetingTypeDraft) {
+    if (editing) onEditChange({ ...editing, draft: value });
+    else onDraftChange(value);
+  }
+
+  function success(item: MeetingType, kind = operation) {
     setItems((previous) => [
       ...previous.filter((type) => type.id !== item.id),
       item,
     ]);
-    onDraftChange(emptyDraft);
+    if (kind === 'create') onDraftChange(emptyDraft);
+    else if (editing?.current.id === item.id) onEditChange(undefined);
     setPendingKey(undefined);
     setError(undefined);
     setFieldErrors([]);
@@ -69,6 +87,14 @@ export function MeetingTypes({
   function failure(error: ApiError) {
     setError(error.message);
     setFieldErrors(error.fieldErrors ?? []);
+    if (error.currentMeetingType) {
+      const current = error.currentMeetingType;
+      setItems((previous) =>
+        previous.map((item) => (item.id === current.id ? current : item)),
+      );
+      if (editing?.current.id === current.id)
+        onEditChange({ ...editing, current });
+    }
     setPendingKey(undefined);
     onLockChange(false);
   }
@@ -102,7 +128,8 @@ export function MeetingTypes({
 
   async function save() {
     if (blocked || saving || pendingKey || loading || loadError) return;
-    const duration = Number(draft.durationMinutes);
+    if (editing?.current.archived) return;
+    const duration = Number(activeDraft.durationMinutes);
     if (!Number.isInteger(duration)) {
       failure({
         code: 'VALIDATION_FAILED',
@@ -118,25 +145,79 @@ export function MeetingTypes({
       return;
     }
     setSaving(true);
+    setOperation(editing ? 'edit' : 'create');
     onLockChange(true);
     setError(undefined);
     setFieldErrors([]);
     const key = crypto.randomUUID();
     try {
-      const result = await createMeetingType({
+      const options = {
         headers: { 'Idempotency-Key': key },
         signal: AbortSignal.timeout(15_000),
-        body: { ...draft, durationMinutes: Number(draft.durationMinutes) },
-      });
+        body: {
+          ...activeDraft,
+          durationMinutes: Number(activeDraft.durationMinutes),
+        },
+      };
+      const result = editing
+        ? await updateMeetingType({
+            ...options,
+            path: { id: editing.current.id },
+            body: {
+              title: activeDraft.title,
+              description: activeDraft.description,
+              durationMinutes: duration,
+              requiresApproval: activeDraft.requiresApproval,
+              expectedVersion: editing.current.version,
+            },
+          })
+        : await createMeetingType(options);
       if (result.data) {
-        success(result.data);
+        success(result.data, editing ? 'edit' : 'create');
       } else if (
         result.response &&
-        [400, 409, 422].includes(result.response.status) &&
+        [400, 404, 409, 422].includes(result.response.status) &&
         result.error?.code
       ) {
         failure(result.error);
       } else unknown(key);
+    } catch {
+      unknown(key);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function archive(item: MeetingType) {
+    if (locked || loading || loadError || item.archived) return;
+    if (
+      !window.confirm(
+        'Архивирование необратимо: тип нельзя восстановить или редактировать. Новая запись прекратится, существующие бронирования сохранятся. Архивировать тип?',
+      )
+    )
+      return;
+    setOperation('archive');
+    setSaving(true);
+    onLockChange(true);
+    setError(undefined);
+    setFieldErrors([]);
+    const key = crypto.randomUUID();
+    try {
+      const result = await archiveMeetingType({
+        path: { id: item.id },
+        headers: { 'Idempotency-Key': key },
+        body: { expectedVersion: item.version },
+        signal: AbortSignal.timeout(15_000),
+      });
+      if (result.data) {
+        success(result.data, 'archive');
+      } else if (
+        result.response &&
+        [400, 404, 409, 422].includes(result.response.status) &&
+        result.error?.code
+      )
+        failure(result.error);
+      else unknown(key);
     } catch {
       unknown(key);
     } finally {
@@ -152,7 +233,11 @@ export function MeetingTypes({
         path: { key: pendingKey },
         signal: AbortSignal.timeout(15_000),
       });
-      if (result.data?.statusCode === 201 && result.data.meetingType)
+      if (
+        result.data &&
+        [200, 201].includes(result.data.statusCode) &&
+        result.data.meetingType
+      )
         success(result.data.meetingType);
       else if (result.data?.error) failure(result.data.error);
       else if (result.response?.status === 410) {
@@ -181,6 +266,12 @@ export function MeetingTypes({
         }),
       ]);
       setItems(types.data.items);
+      if (editing) {
+        const current = types.data.items.find(
+          (item) => item.id === editing.current.id,
+        );
+        if (current) onEditChange({ ...editing, current });
+      }
       setPendingKey(undefined);
       setUnavailable(false);
       setError(undefined);
@@ -240,6 +331,7 @@ export function MeetingTypes({
           >
             <h3>{item.title}</h3>
             <p>ID: {item.id}</p>
+            <p>{item.archived ? 'Архивный' : 'Активный'}</p>
             <p className="meeting-description">{item.description}</p>
             <p>
               {item.durationMinutes} мин ·{' '}
@@ -271,20 +363,69 @@ export function MeetingTypes({
             >
               Копировать прямую ссылку
             </button>
+            {!item.archived && (
+              <>
+                <button
+                  className="button"
+                  disabled={locked}
+                  onClick={() => {
+                    onEditChange({
+                      current: item,
+                      draft: {
+                        id: item.id,
+                        title: item.title,
+                        description: item.description,
+                        durationMinutes: String(item.durationMinutes),
+                        requiresApproval: item.requiresApproval,
+                      },
+                    });
+                    setFieldErrors([]);
+                    setError(undefined);
+                  }}
+                >
+                  Редактировать тип
+                </button>
+                <button
+                  className="button"
+                  disabled={locked}
+                  onClick={() => void archive(item)}
+                >
+                  Архивировать тип
+                </button>
+              </>
+            )}
           </article>
         );
       })}
       {copyMessage && <p role="status">{copyMessage}</p>}
       <form
         className="profile-editor"
-        aria-label="Создание типа встречи"
+        aria-label={
+          editing ? 'Редактирование типа встречи' : 'Создание типа встречи'
+        }
         noValidate
         onSubmit={(event) => {
           event.preventDefault();
           void save();
         }}
       >
-        <h3>Новый тип встречи</h3>
+        <h3>{editing ? 'Редактирование типа встречи' : 'Новый тип встречи'}</h3>
+        {editing && (
+          <p>Изменения условий действуют только для новых бронирований.</p>
+        )}
+        {editing?.current.archived && (
+          <p role="alert">
+            Архивный тип нельзя редактировать или восстановить.
+          </p>
+        )}
+        {editing && error && (
+          <p>
+            Актуальные данные: {editing.current.title},{' '}
+            {editing.current.durationMinutes} мин, версия{' '}
+            {editing.current.version}. Черновик сохранён; проверьте данные перед
+            новым действием.
+          </p>
+        )}
         <p>ID после создания изменить нельзя. Регистр значим.</p>
         {(['id', 'title', 'description', 'durationMinutes'] as const).map(
           (field) => {
@@ -299,8 +440,11 @@ export function MeetingTypes({
             );
             const props = {
               id: `meeting-${field}`,
-              value: draft[field],
-              disabled: blocked || saving || Boolean(pendingKey),
+              value: activeDraft[field],
+              disabled:
+                locked ||
+                (field === 'id' && Boolean(editing)) ||
+                Boolean(editing?.current.archived),
               'aria-invalid': fieldError ? true : undefined,
               'aria-describedby': fieldError
                 ? `meeting-${field}-error`
@@ -309,7 +453,7 @@ export function MeetingTypes({
                 event: React.ChangeEvent<
                   HTMLInputElement | HTMLTextAreaElement
                 >,
-              ) => onDraftChange({ ...draft, [field]: event.target.value }),
+              ) => changeDraft({ ...activeDraft, [field]: event.target.value }),
             };
             return (
               <div key={field}>
@@ -329,11 +473,11 @@ export function MeetingTypes({
         <label className="booking-toggle">
           <input
             type="checkbox"
-            checked={draft.requiresApproval}
-            disabled={blocked || saving || Boolean(pendingKey)}
+            checked={activeDraft.requiresApproval}
+            disabled={locked || Boolean(editing?.current.archived)}
             onChange={(event) =>
-              onDraftChange({
-                ...draft,
+              changeDraft({
+                ...activeDraft,
                 requiresApproval: event.target.checked,
               })
             }
@@ -343,13 +487,31 @@ export function MeetingTypes({
         <button
           className="button"
           disabled={
-            blocked || saving || Boolean(pendingKey) || loading || loadError
+            locked || loading || loadError || Boolean(editing?.current.archived)
           }
         >
-          Создать тип встречи
+          {editing ? 'Сохранить тип встречи' : 'Создать тип встречи'}
         </button>
+        {editing && (
+          <button
+            type="button"
+            className="button"
+            disabled={locked}
+            onClick={() => {
+              onEditChange(undefined);
+              setFieldErrors([]);
+              setError(undefined);
+            }}
+          >
+            Отменить редактирование типа
+          </button>
+        )}
       </form>
-      {saving && <p role="status">Создание типа…</p>}
+      {saving && (
+        <p role="status">
+          {operation === 'create' ? 'Создание типа…' : 'Сохранение типа…'}
+        </p>
+      )}
       {error && <p role="alert">{error}</p>}
       {pendingKey &&
         (unavailable ? (
@@ -370,7 +532,9 @@ export function MeetingTypes({
               void recover();
             }}
           >
-            Выяснить результат создания
+            {operation === 'create'
+              ? 'Выяснить результат создания'
+              : 'Выяснить результат изменения типа'}
           </button>
         ))}
     </section>

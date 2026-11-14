@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { MeetingTypes, type MeetingTypeDraft } from './MeetingTypes';
+import {
+  MeetingTypes,
+  type MeetingTypeDraft,
+  type MeetingTypeEdit,
+} from './MeetingTypes';
 import { OwnerBookings } from './OwnerBookings';
 import {
   getOwnerProfile,
@@ -28,6 +32,7 @@ export function OwnerPage() {
   const [draft, setDraft] = useState({ name: '', username: '' });
   // Profile reloads unmount the meeting-type form, but must not clear its draft.
   const [meetingDraft, setMeetingDraft] = useState<MeetingTypeDraft>();
+  const [meetingEdit, setMeetingEdit] = useState<MeetingTypeEdit>();
   const [fieldErrors, setFieldErrors] = useState<ApiError['fieldErrors']>([]);
   const [profileOperation, setProfileOperation] = useState(false);
   const draftInitialized = useRef(false);
@@ -391,6 +396,8 @@ export function OwnerPage() {
           </button>
           {copyMessage && <p role="status">{copyMessage}</p>}
           <MeetingTypes
+            editing={meetingEdit}
+            onEditChange={setMeetingEdit}
             bookingUrl={state.profile.bookingUrl}
             blocked={saving || Boolean(pendingKey) || bookingBlocked}
             draft={meetingDraft}

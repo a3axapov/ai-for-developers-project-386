@@ -9,7 +9,13 @@ export type ApiError = {
     message: string;
     currentProfile?: OwnerProfile;
     currentBooking?: BookingDetails;
+    currentMeetingType?: MeetingType;
+    currentConditions?: PublicMeetingType;
     fieldErrors?: Array<FieldError>;
+};
+
+export type ArchiveMeetingTypeCommand = {
+    expectedVersion: number;
 };
 
 /**
@@ -222,7 +228,7 @@ export type PublicMeetingType = {
 export type PublicMeetingTypePage = {
     ownerName: string;
     ownerTimeZone: string;
-    state: 'BOOKING_DISABLED' | 'OPEN';
+    state: 'BOOKING_DISABLED' | 'TYPE_ARCHIVED' | 'OPEN';
     /**
      * Present only when OPEN.
      */
@@ -256,6 +262,14 @@ export type SubmittedBookingAttempt = {
     state: 'SUCCEEDED';
     booking: BookingDetails;
     resultUrl: string;
+};
+
+export type UpdateMeetingTypeCommand = {
+    title: string;
+    description: string;
+    durationMinutes: number;
+    requiresApproval: boolean;
+    expectedVersion: number;
 };
 
 export type WorkingDay = {
@@ -644,6 +658,90 @@ export type GetMeetingTypeResponses = {
 };
 
 export type GetMeetingTypeResponse = GetMeetingTypeResponses[keyof GetMeetingTypeResponses];
+
+export type UpdateMeetingTypeData = {
+    body: UpdateMeetingTypeCommand;
+    headers: {
+        'Idempotency-Key': IdempotencyKey;
+    };
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/owner/meeting-types/{id}';
+};
+
+export type UpdateMeetingTypeErrors = {
+    /**
+     * The server could not understand the request due to invalid syntax.
+     */
+    400: ApiError;
+    /**
+     * The server cannot find the requested resource.
+     */
+    404: ApiError;
+    /**
+     * The request conflicts with the current state of the server.
+     */
+    409: ApiError;
+    /**
+     * Client error
+     */
+    422: ApiError;
+};
+
+export type UpdateMeetingTypeError = UpdateMeetingTypeErrors[keyof UpdateMeetingTypeErrors];
+
+export type UpdateMeetingTypeResponses = {
+    /**
+     * The request has succeeded.
+     */
+    200: MeetingType;
+};
+
+export type UpdateMeetingTypeResponse = UpdateMeetingTypeResponses[keyof UpdateMeetingTypeResponses];
+
+export type ArchiveMeetingTypeData = {
+    body: ArchiveMeetingTypeCommand;
+    headers: {
+        'Idempotency-Key': IdempotencyKey;
+    };
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/owner/meeting-types/{id}/archive';
+};
+
+export type ArchiveMeetingTypeErrors = {
+    /**
+     * The server could not understand the request due to invalid syntax.
+     */
+    400: ApiError;
+    /**
+     * The server cannot find the requested resource.
+     */
+    404: ApiError;
+    /**
+     * The request conflicts with the current state of the server.
+     */
+    409: ApiError;
+    /**
+     * Client error
+     */
+    422: ApiError;
+};
+
+export type ArchiveMeetingTypeError = ArchiveMeetingTypeErrors[keyof ArchiveMeetingTypeErrors];
+
+export type ArchiveMeetingTypeResponses = {
+    /**
+     * The request has succeeded.
+     */
+    200: MeetingType;
+};
+
+export type ArchiveMeetingTypeResponse = ArchiveMeetingTypeResponses[keyof ArchiveMeetingTypeResponses];
 
 export type GetOwnerOperationData = {
     body?: never;

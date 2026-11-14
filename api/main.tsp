@@ -63,6 +63,54 @@ model CreateMeetingTypeCommand {
   requiresApproval?: boolean = false;
 }
 
+model UpdateMeetingTypeCommand {
+  title: string;
+  description: string;
+  durationMinutes: int32;
+  requiresApproval: boolean;
+  expectedVersion: int64;
+}
+
+model ArchiveMeetingTypeCommand {
+  expectedVersion: int64;
+}
+
+@post
+@route("/owner/meeting-types/{id}/archive")
+@tag("Owner")
+@operationId("archiveMeetingType")
+op archiveMeetingType(
+  @path id: string,
+  @header("Idempotency-Key") idempotencyKey: IdempotencyKey,
+  @body command: ArchiveMeetingTypeCommand,
+):
+  | {
+      @header("Cache-Control") cacheControl: "no-store";
+      @body body: MeetingType;
+    }
+  | PageNotFound
+  | StateConflict
+  | InvalidData
+  | MalformedRequest;
+
+@put
+@route("/owner/meeting-types/{id}")
+@tag("Owner")
+@operationId("updateMeetingType")
+op updateMeetingType(
+  @path id: string,
+  @header("Idempotency-Key") idempotencyKey: IdempotencyKey,
+  @body command: UpdateMeetingTypeCommand,
+):
+  | {
+      @header("Cache-Control") cacheControl: "no-store";
+      @body body: MeetingType;
+    }
+  | PageNotFound
+  | StateConflict
+  | InvalidData
+  | MalformedRequest;
+
 model WorkingInterval {
   start: string;
   end: string;
@@ -144,6 +192,8 @@ model ApiError {
   message: string;
   currentProfile?: OwnerProfile;
   currentBooking?: BookingDetails;
+  currentMeetingType?: MeetingType;
+  currentConditions?: PublicMeetingType;
   fieldErrors?: FieldError[];
 }
 
@@ -217,7 +267,7 @@ model PublicMeetingType {
 model PublicMeetingTypePage {
   ownerName: string;
   ownerTimeZone: string;
-  state: "BOOKING_DISABLED" | "OPEN";
+  state: "BOOKING_DISABLED" | "TYPE_ARCHIVED" | "OPEN";
 
   @doc("Present only when OPEN.")
   meetingType?: PublicMeetingType;

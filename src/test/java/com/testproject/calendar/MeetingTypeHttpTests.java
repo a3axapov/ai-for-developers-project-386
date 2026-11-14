@@ -246,7 +246,7 @@ class MeetingTypeHttpTests {
                 json.readTree(send("GET", "/api/public/booking-entry/current", null, null).body())
                         .get("bookingUrl").asString());
         assertEquals(404, send("GET", "/api/owner/meeting-types/missing", null, null).statusCode());
-        assertEquals(405, send("PUT", "/api/owner/meeting-types/Consult", "edit", "{}").statusCode());
+        assertEquals(422, send("PUT", "/api/owner/meeting-types/Consult", "edit", "{}").statusCode());
     }
 
     @ParameterizedTest

@@ -6,6 +6,8 @@ import com.testproject.calendar.generated.model.OwnerOperationResult;
 import com.testproject.calendar.generated.model.PublicBookingCommand;
 import com.testproject.calendar.generated.model.ProfileCommand;
 import com.testproject.calendar.generated.model.CreateMeetingTypeCommand;
+import com.testproject.calendar.generated.model.UpdateMeetingTypeCommand;
+import com.testproject.calendar.generated.model.ArchiveMeetingTypeCommand;
 import com.testproject.calendar.generated.model.MeetingType;
 import com.testproject.calendar.generated.model.MeetingTypeList;
 import com.testproject.calendar.generated.model.OwnerBookingList;
@@ -61,6 +63,20 @@ public class OwnerController implements OwnerApi {
     public ResponseEntity<MeetingType> createMeetingType(String idempotencyKey, CreateMeetingTypeCommand command) {
         return ResponseEntity.status(201).cacheControl(CacheControl.noStore())
                 .body(owner.createMeetingType(idempotencyKey, command));
+    }
+
+    @Override
+    public ResponseEntity<MeetingType> archiveMeetingType(
+            String id, String idempotencyKey, ArchiveMeetingTypeCommand command) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(owner.archiveMeetingType(idempotencyKey, id, command));
+    }
+
+    @Override
+    public ResponseEntity<MeetingType> updateMeetingType(
+            String id, String idempotencyKey, UpdateMeetingTypeCommand command) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(owner.updateMeetingType(idempotencyKey, id, command));
     }
 
     @Override

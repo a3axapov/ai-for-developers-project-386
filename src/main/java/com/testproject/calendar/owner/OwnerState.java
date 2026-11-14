@@ -17,6 +17,8 @@ import com.testproject.calendar.generated.model.PublicBookingCommand;
 import com.testproject.calendar.generated.model.ProfileCommand;
 import com.testproject.calendar.generated.model.MeetingType;
 import com.testproject.calendar.generated.model.CreateMeetingTypeCommand;
+import com.testproject.calendar.generated.model.UpdateMeetingTypeCommand;
+import com.testproject.calendar.generated.model.ArchiveMeetingTypeCommand;
 import com.testproject.calendar.generated.model.WorkingDay;
 import com.testproject.calendar.generated.model.WorkingInterval;
 import com.testproject.calendar.generated.model.PublicBookingPage;
@@ -132,7 +134,7 @@ public class OwnerState {
         }
         if (!conditionsToken(type).equals(attempt.conditionsToken)) {
             throw new ApiFailure(409, new ApiError("CONDITIONS_CHANGED",
-                    "Условия встречи изменились. Выберите время заново."));
+                    "Условия встречи изменились. Выберите время заново.").currentConditions(publicType(type)));
         }
         var slots = availability.slots(type, profile().getTimeZone(), conditionsToken(type));
         var start = attempt.startsAt.toInstant();
@@ -354,7 +356,7 @@ public class OwnerState {
         }
         if (!conditionsToken(type).equals(command.getConditionsToken())) {
             throw new ApiFailure(409, new ApiError("CONDITIONS_CHANGED",
-                    "Условия встречи изменились. Выберите время заново."));
+                    "Условия встречи изменились. Выберите время заново.").currentConditions(publicType(type)));
         }
         if (!printable(command.getGuestName()) || normalizedName.isEmpty()
                 || normalizedName.codePointCount(0, normalizedName.length()) > 100) {
@@ -446,7 +448,7 @@ public class OwnerState {
             return (MeetingType) saved.result();
         }
         try {
-            var result = newMeetingType(command);
+            var result = newMeetingType(command, null);
             operations.put(key, new SavedCommand(command, result, null));
             return result;
         } catch (ApiFailure failure) {
@@ -455,7 +457,93 @@ public class OwnerState {
         }
     }
 
-    private MeetingType newMeetingType(CreateMeetingTypeCommand command) {
+    private record MeetingTypeEdit(String id, UpdateMeetingTypeCommand command) { }
+    private record MeetingTypeArchive(String id, ArchiveMeetingTypeCommand command) { }
+
+    public synchronized MeetingType archiveMeetingType(String key, String id, ArchiveMeetingTypeCommand command) {
+        if (!validKey(key)) {
+            throw invalidKey();
+        }
+        var request = new MeetingTypeArchive(id, command);
+        var saved = operations.get(key);
+        if (saved != null) {
+            if (!saved.request().equals(request)) {
+                throw new ApiFailure(409, new ApiError("IDEMPOTENCY_KEY_REUSED",
+                        "Этот ключ уже использован для другого запроса."));
+            }
+            if (saved.failure() != null) {
+                throw saved.failure();
+            }
+            return (MeetingType) saved.result();
+        }
+        try {
+            requireTypeVersionValue(command.getExpectedVersion());
+            var current = meetingType(id);
+            requireTypeVersion(current, command.getExpectedVersion());
+            // Replace rather than mutate: earlier operation outcomes remain immutable snapshots.
+            var result = new MeetingType(current.getId(), current.getTitle(), current.getDescription(),
+                    current.getDurationMinutes(), current.getRequiresApproval(), current.getTimeZone(),
+                    current.getVersion() + 1, true, current.getDays(), current.getDateOverrides());
+            meetingTypes.put(id, result);
+            operations.put(key, new SavedCommand(request, result, null));
+            return result;
+        } catch (ApiFailure failure) {
+            operations.put(key, new SavedCommand(request, null, failure));
+            throw failure;
+        }
+    }
+
+    public synchronized MeetingType updateMeetingType(String key, String id, UpdateMeetingTypeCommand command) {
+        if (!validKey(key)) {
+            throw invalidKey();
+        }
+        var request = new MeetingTypeEdit(id, command);
+        var saved = operations.get(key);
+        if (saved != null) {
+            if (!saved.request().equals(request)) {
+                throw new ApiFailure(409, new ApiError("IDEMPOTENCY_KEY_REUSED",
+                        "Этот ключ уже использован для другого запроса."));
+            }
+            if (saved.failure() != null) {
+                throw saved.failure();
+            }
+            return (MeetingType) saved.result();
+        }
+        try {
+            requireTypeVersionValue(command.getExpectedVersion());
+            var current = meetingType(id);
+            requireTypeVersion(current, command.getExpectedVersion());
+            var result = newMeetingType(new CreateMeetingTypeCommand(id, command.getTitle(),
+                    command.getDescription(), command.getDurationMinutes())
+                    .requiresApproval(command.getRequiresApproval()), current);
+            operations.put(key, new SavedCommand(request, result, null));
+            return result;
+        } catch (ApiFailure failure) {
+            operations.put(key, new SavedCommand(request, null, failure));
+            throw failure;
+        }
+    }
+
+    private void requireTypeVersionValue(Long expectedVersion) {
+        if (expectedVersion == null || expectedVersion < 1) {
+            throw new ApiFailure(422, new ApiError("VALIDATION_FAILED", "Проверьте данные запроса.")
+                    .fieldErrors(List.of(new FieldError("expectedVersion", "INVALID_VALUE",
+                            "Укажите целую версию не меньше 1."))));
+        }
+    }
+
+    private void requireTypeVersion(MeetingType current, long expectedVersion) {
+        if (current.getVersion() != expectedVersion) {
+            throw new ApiFailure(409, new ApiError("RESOURCE_CHANGED",
+                    "Тип встречи изменился. Проверьте актуальные данные.").currentMeetingType(current));
+        }
+        if (current.getArchived()) {
+            throw new ApiFailure(409, new ApiError("ACTION_NOT_ALLOWED",
+                    "Архивный тип нельзя редактировать или восстановить.").currentMeetingType(current));
+        }
+    }
+
+    private MeetingType newMeetingType(CreateMeetingTypeCommand command, MeetingType current) {
         var title = normalize(command.getTitle());
         var rawDescription = command.getDescription() == null ? "" : command.getDescription().replace("\r\n", "\n");
         var description = java.util.Arrays.stream(rawDescription.split("\n", -1))
@@ -490,18 +578,22 @@ public class OwnerState {
             throw new ApiFailure(422,
                     new ApiError("VALIDATION_FAILED", "Проверьте данные запроса.").fieldErrors(errors));
         }
-        if (meetingTypes.containsKey(command.getId()) || meetingTypes.values().stream().anyMatch(type ->
-                !type.getArchived() && type.getTitle().equalsIgnoreCase(title)
+        if (current == null && meetingTypes.containsKey(command.getId())
+                || meetingTypes.values().stream().anyMatch(type ->
+                !type.getId().equals(command.getId()) && !type.getArchived() && type.getTitle().equalsIgnoreCase(title)
                 && type.getDurationMinutes().equals(command.getDurationMinutes()))) {
             throw new ApiFailure(409, new ApiError("DUPLICATE_MEETING_TYPE",
                     "Тип с таким ID или названием и длительностью уже существует."));
         }
         var result = new MeetingType(command.getId(), title, description,
-                command.getDurationMinutes(), command.getRequiresApproval(), profile().getTimeZone(), 1L, false,
-                java.util.Arrays.stream(DayOfWeek.values()).map(day -> new WorkingDay(
+                command.getDurationMinutes(), command.getRequiresApproval(),
+                current == null ? profile().getTimeZone() : current.getTimeZone(),
+                current == null ? 1L : current.getVersion() + 1, false,
+                current == null ? java.util.Arrays.stream(DayOfWeek.values()).map(day -> new WorkingDay(
                         WorkingDay.DayEnum.valueOf(day.name()), initial.workingDays().contains(day)
-                        ? List.of(new WorkingInterval(initial.workStart(), initial.workEnd())) : List.of())).toList(),
-                List.of());
+                         ? List.of(new WorkingInterval(initial.workStart(), initial.workEnd())) : List.of())).toList()
+                        : current.getDays(),
+                current == null ? List.of() : current.getDateOverrides());
         meetingTypes.put(command.getId(), result);
         return result;
     }
@@ -531,8 +623,9 @@ public class OwnerState {
         requireUsername(requestedUsername);
         var type = meetingType(id);
         var page = new PublicMeetingTypePage(name, profile().getTimeZone(), bookingEnabled
-                ? PublicMeetingTypePage.StateEnum.OPEN : PublicMeetingTypePage.StateEnum.BOOKING_DISABLED);
-        if (bookingEnabled) {
+                ? type.getArchived() ? PublicMeetingTypePage.StateEnum.TYPE_ARCHIVED
+                    : PublicMeetingTypePage.StateEnum.OPEN : PublicMeetingTypePage.StateEnum.BOOKING_DISABLED);
+        if (bookingEnabled && !type.getArchived()) {
             page.setMeetingType(publicType(type));
         }
         return page;
@@ -707,7 +800,8 @@ public class OwnerState {
             return new OwnerOperationResult(saved.failure().status()).error(saved.failure().error());
         }
         if (saved.result() instanceof MeetingType type) {
-            return new OwnerOperationResult(201).meetingType(type);
+            return new OwnerOperationResult(saved.request() instanceof CreateMeetingTypeCommand ? 201 : 200)
+                    .meetingType(type);
         }
         if (saved.result() instanceof BookingDetails booking) {
             return new OwnerOperationResult(200).booking(bookingSnapshot(booking));
