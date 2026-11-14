@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { ArchiveMeetingTypeData, ArchiveMeetingTypeErrors, ArchiveMeetingTypeResponses, CancelGuestBookingData, CancelGuestBookingErrors, CancelGuestBookingResponses, CancelOwnerBookingData, CancelOwnerBookingErrors, CancelOwnerBookingResponses, ConfirmOwnerBookingData, ConfirmOwnerBookingErrors, ConfirmOwnerBookingResponses, CreateMeetingTypeData, CreateMeetingTypeErrors, CreateMeetingTypeResponses, GetBookingAttemptData, GetBookingAttemptErrors, GetBookingAttemptResponses, GetBookingEntryData, GetBookingEntryResponses, GetBookingResultData, GetBookingResultErrors, GetBookingResultResponses, GetHealthData, GetHealthResponses, GetMeetingTypeData, GetMeetingTypeErrors, GetMeetingTypeResponses, GetOwnerBookingData, GetOwnerBookingErrors, GetOwnerBookingResponses, GetOwnerCalendarData, GetOwnerCalendarErrors, GetOwnerCalendarResponses, GetOwnerOperationData, GetOwnerOperationErrors, GetOwnerOperationResponses, GetOwnerProfileData, GetOwnerProfileResponses, GetPublicBookingPageData, GetPublicBookingPageErrors, GetPublicBookingPageResponses, GetPublicMeetingTypeData, GetPublicMeetingTypeErrors, GetPublicMeetingTypeResponses, GetPublicSlotsData, GetPublicSlotsErrors, GetPublicSlotsResponses, ListMeetingTypesData, ListMeetingTypesResponses, ListOwnerBookingsData, ListOwnerBookingsErrors, ListOwnerBookingsResponses, PrepareBookingAttemptData, PrepareBookingAttemptErrors, PrepareBookingAttemptResponses, RejectOwnerBookingData, RejectOwnerBookingErrors, RejectOwnerBookingResponses, SetPublicBookingData, SetPublicBookingErrors, SetPublicBookingResponses, SubmitBookingAttemptData, SubmitBookingAttemptErrors, SubmitBookingAttemptResponses, UpdateMeetingTypeData, UpdateMeetingTypeErrors, UpdateMeetingTypeResponses, UpdateOwnerProfileData, UpdateOwnerProfileErrors, UpdateOwnerProfileResponses, UpdateWeeklyHoursData, UpdateWeeklyHoursErrors, UpdateWeeklyHoursResponses } from './types.gen';
+import type { ArchiveMeetingTypeData, ArchiveMeetingTypeErrors, ArchiveMeetingTypeResponses, CancelGuestBookingData, CancelGuestBookingErrors, CancelGuestBookingResponses, CancelOwnerBookingData, CancelOwnerBookingErrors, CancelOwnerBookingResponses, ConfirmOwnerBookingData, ConfirmOwnerBookingErrors, ConfirmOwnerBookingResponses, CreateMeetingTypeData, CreateMeetingTypeErrors, CreateMeetingTypeResponses, DeleteDateOverrideData, DeleteDateOverrideErrors, DeleteDateOverrideResponses, GetBookingAttemptData, GetBookingAttemptErrors, GetBookingAttemptResponses, GetBookingEntryData, GetBookingEntryResponses, GetBookingResultData, GetBookingResultErrors, GetBookingResultResponses, GetHealthData, GetHealthResponses, GetMeetingTypeData, GetMeetingTypeErrors, GetMeetingTypeResponses, GetOwnerBookingData, GetOwnerBookingErrors, GetOwnerBookingResponses, GetOwnerCalendarData, GetOwnerCalendarErrors, GetOwnerCalendarResponses, GetOwnerOperationData, GetOwnerOperationErrors, GetOwnerOperationResponses, GetOwnerProfileData, GetOwnerProfileResponses, GetPublicBookingPageData, GetPublicBookingPageErrors, GetPublicBookingPageResponses, GetPublicMeetingTypeData, GetPublicMeetingTypeErrors, GetPublicMeetingTypeResponses, GetPublicSlotsData, GetPublicSlotsErrors, GetPublicSlotsResponses, ListMeetingTypesData, ListMeetingTypesResponses, ListOwnerBookingsData, ListOwnerBookingsErrors, ListOwnerBookingsResponses, PrepareBookingAttemptData, PrepareBookingAttemptErrors, PrepareBookingAttemptResponses, PutDateOverrideData, PutDateOverrideErrors, PutDateOverrideResponses, RejectOwnerBookingData, RejectOwnerBookingErrors, RejectOwnerBookingResponses, SetPublicBookingData, SetPublicBookingErrors, SetPublicBookingResponses, SubmitBookingAttemptData, SubmitBookingAttemptErrors, SubmitBookingAttemptResponses, UpdateMeetingTypeData, UpdateMeetingTypeErrors, UpdateMeetingTypeResponses, UpdateOwnerProfileData, UpdateOwnerProfileErrors, UpdateOwnerProfileResponses, UpdateWeeklyHoursData, UpdateWeeklyHoursErrors, UpdateWeeklyHoursResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -125,6 +125,24 @@ export const updateMeetingType = <ThrowOnError extends boolean = false>(options:
 
 export const archiveMeetingType = <ThrowOnError extends boolean = false>(options: Options<ArchiveMeetingTypeData, ThrowOnError>): RequestResult<ArchiveMeetingTypeResponses, ArchiveMeetingTypeErrors, ThrowOnError> => (options.client ?? client).post<ArchiveMeetingTypeResponses, ArchiveMeetingTypeErrors, ThrowOnError>({
     url: '/api/owner/meeting-types/{id}/archive',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+export const deleteDateOverride = <ThrowOnError extends boolean = false>(options: Options<DeleteDateOverrideData, ThrowOnError>): RequestResult<DeleteDateOverrideResponses, DeleteDateOverrideErrors, ThrowOnError> => (options.client ?? client).delete<DeleteDateOverrideResponses, DeleteDateOverrideErrors, ThrowOnError>({
+    url: '/api/owner/meeting-types/{id}/date-overrides/{date}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+export const putDateOverride = <ThrowOnError extends boolean = false>(options: Options<PutDateOverrideData, ThrowOnError>): RequestResult<PutDateOverrideResponses, PutDateOverrideErrors, ThrowOnError> => (options.client ?? client).put<PutDateOverrideResponses, PutDateOverrideErrors, ThrowOnError>({
+    url: '/api/owner/meeting-types/{id}/date-overrides/{date}',
     ...options,
     headers: {
         'Content-Type': 'application/json',

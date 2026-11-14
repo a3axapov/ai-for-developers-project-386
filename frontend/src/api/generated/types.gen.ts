@@ -100,6 +100,20 @@ export type DateOverride = {
     intervals: Array<WorkingInterval>;
 };
 
+export type DateOverrideCommand = {
+    /**
+     * Complete replacement for this local date in the type's time zone. Empty means closed, not deletion.
+     */
+    intervals: Array<WorkingInterval>;
+    expectedVersion: number;
+    confirmationToken?: string;
+};
+
+export type DeleteDateOverrideCommand = {
+    expectedVersion: number;
+    confirmationToken?: string;
+};
+
 export type FieldError = {
     field: string;
     code: string;
@@ -851,6 +865,92 @@ export type ArchiveMeetingTypeResponses = {
 };
 
 export type ArchiveMeetingTypeResponse = ArchiveMeetingTypeResponses[keyof ArchiveMeetingTypeResponses];
+
+export type DeleteDateOverrideData = {
+    body: DeleteDateOverrideCommand;
+    headers: {
+        'Idempotency-Key': IdempotencyKey;
+    };
+    path: {
+        id: string;
+        date: string;
+    };
+    query?: never;
+    url: '/api/owner/meeting-types/{id}/date-overrides/{date}';
+};
+
+export type DeleteDateOverrideErrors = {
+    /**
+     * The server could not understand the request due to invalid syntax.
+     */
+    400: ApiError;
+    /**
+     * The server cannot find the requested resource.
+     */
+    404: ApiError;
+    /**
+     * The request conflicts with the current state of the server.
+     */
+    409: ApiError;
+    /**
+     * Client error
+     */
+    422: ApiError;
+};
+
+export type DeleteDateOverrideError = DeleteDateOverrideErrors[keyof DeleteDateOverrideErrors];
+
+export type DeleteDateOverrideResponses = {
+    /**
+     * The request has succeeded.
+     */
+    200: MeetingType;
+};
+
+export type DeleteDateOverrideResponse = DeleteDateOverrideResponses[keyof DeleteDateOverrideResponses];
+
+export type PutDateOverrideData = {
+    body: DateOverrideCommand;
+    headers: {
+        'Idempotency-Key': IdempotencyKey;
+    };
+    path: {
+        id: string;
+        date: string;
+    };
+    query?: never;
+    url: '/api/owner/meeting-types/{id}/date-overrides/{date}';
+};
+
+export type PutDateOverrideErrors = {
+    /**
+     * The server could not understand the request due to invalid syntax.
+     */
+    400: ApiError;
+    /**
+     * The server cannot find the requested resource.
+     */
+    404: ApiError;
+    /**
+     * The request conflicts with the current state of the server.
+     */
+    409: ApiError;
+    /**
+     * Client error
+     */
+    422: ApiError;
+};
+
+export type PutDateOverrideError = PutDateOverrideErrors[keyof PutDateOverrideErrors];
+
+export type PutDateOverrideResponses = {
+    /**
+     * The request has succeeded.
+     */
+    200: MeetingType;
+};
+
+export type PutDateOverrideResponse = PutDateOverrideResponses[keyof PutDateOverrideResponses];
 
 export type UpdateWeeklyHoursData = {
     body: WeeklyHoursCommand;

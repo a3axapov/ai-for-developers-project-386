@@ -35,7 +35,7 @@ public class ApiExceptionHandler {
         }
         var raw = request.getAttribute(CommandBodyAdvice.RAW_BODY);
         return handleFailure(owner.malformedResult(request.getHeader("Idempotency-Key"),
-                request.getRequestURI(), raw == null ? "" : raw.toString()));
+                request.getMethod() + " " + request.getRequestURI(), raw == null ? "" : raw.toString()));
     }
 
     @ExceptionHandler(MissingRequestHeaderException.class)
@@ -60,7 +60,7 @@ public class ApiExceptionHandler {
         }
         var body = new String(request.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
         return handleFailure(owner.malformedResult(request.getHeader("Idempotency-Key"),
-                request.getRequestURI(), body));
+                request.getMethod() + " " + request.getRequestURI(), body));
     }
 
     private ResponseEntity<ApiError> malformedPublicRequest() {

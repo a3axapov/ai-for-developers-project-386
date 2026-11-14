@@ -159,6 +159,57 @@ model DateOverride {
   intervals: WorkingInterval[];
 }
 
+model DateOverrideCommand {
+  @doc("Complete replacement for this local date in the type's time zone. Empty means closed, not deletion.")
+  intervals: WorkingInterval[];
+
+  expectedVersion: int64;
+  confirmationToken?: string;
+}
+
+model DeleteDateOverrideCommand {
+  expectedVersion: int64;
+  confirmationToken?: string;
+}
+
+@put
+@route("/owner/meeting-types/{id}/date-overrides/{date}")
+@tag("Owner")
+@operationId("putDateOverride")
+op putDateOverride(
+  @path id: string,
+  @path date: string,
+  @header("Idempotency-Key") idempotencyKey: IdempotencyKey,
+  @body command: DateOverrideCommand,
+):
+  | {
+      @header("Cache-Control") cacheControl: "no-store";
+      @body body: MeetingType;
+    }
+  | PageNotFound
+  | StateConflict
+  | InvalidData
+  | MalformedRequest;
+
+@delete
+@route("/owner/meeting-types/{id}/date-overrides/{date}")
+@tag("Owner")
+@operationId("deleteDateOverride")
+op deleteDateOverride(
+  @path id: string,
+  @path date: string,
+  @header("Idempotency-Key") idempotencyKey: IdempotencyKey,
+  @body command: DeleteDateOverrideCommand,
+):
+  | {
+      @header("Cache-Control") cacheControl: "no-store";
+      @body body: MeetingType;
+    }
+  | PageNotFound
+  | StateConflict
+  | InvalidData
+  | MalformedRequest;
+
 model MeetingType {
   id: string;
   title: string;

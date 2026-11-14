@@ -742,6 +742,135 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/ArchiveMeetingTypeCommand'
+  /api/owner/meeting-types/{id}/date-overrides/{date}:
+    put:
+      operationId: putDateOverride
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: date
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/IdempotencyKey'
+      responses:
+        '200':
+          description: The request has succeeded.
+          headers:
+            Cache-Control:
+              required: true
+              schema:
+                type: string
+                enum:
+                  - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeetingType'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: The request conflicts with the current state of the server.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      tags:
+        - Owner
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DateOverrideCommand'
+    delete:
+      operationId: deleteDateOverride
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: date
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/IdempotencyKey'
+      responses:
+        '200':
+          description: The request has succeeded.
+          headers:
+            Cache-Control:
+              required: true
+              schema:
+                type: string
+                enum:
+                  - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeetingType'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: The request conflicts with the current state of the server.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      tags:
+        - Owner
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteDateOverrideCommand'
   /api/owner/meeting-types/{id}/weekly-hours:
     put:
       operationId: updateWeeklyHours
@@ -1354,6 +1483,32 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/WorkingInterval'
+    DateOverrideCommand:
+      type: object
+      required:
+        - intervals
+        - expectedVersion
+      properties:
+        intervals:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkingInterval'
+          description: Complete replacement for this local date in the type's time zone. Empty means closed, not deletion.
+        expectedVersion:
+          type: integer
+          format: int64
+        confirmationToken:
+          type: string
+    DeleteDateOverrideCommand:
+      type: object
+      required:
+        - expectedVersion
+      properties:
+        expectedVersion:
+          type: integer
+          format: int64
+        confirmationToken:
+          type: string
     FieldError:
       type: object
       required:

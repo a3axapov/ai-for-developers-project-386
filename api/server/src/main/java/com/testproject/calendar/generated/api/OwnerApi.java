@@ -10,7 +10,9 @@ import com.testproject.calendar.generated.model.ArchiveMeetingTypeCommand;
 import com.testproject.calendar.generated.model.BookingDecisionCommand;
 import com.testproject.calendar.generated.model.BookingDetails;
 import com.testproject.calendar.generated.model.CreateMeetingTypeCommand;
+import com.testproject.calendar.generated.model.DateOverrideCommand;
 import org.springframework.format.annotation.DateTimeFormat;
+import com.testproject.calendar.generated.model.DeleteDateOverrideCommand;
 import com.testproject.calendar.generated.model.MeetingType;
 import com.testproject.calendar.generated.model.MeetingTypeList;
 import org.springframework.lang.Nullable;
@@ -137,6 +139,34 @@ public interface OwnerApi {
     ResponseEntity<MeetingType> createMeetingType(
          @RequestHeader(value = "Idempotency-Key", required = true) String idempotencyKey,
          @RequestBody CreateMeetingTypeCommand createMeetingTypeCommand
+    );
+
+
+    String PATH_DELETE_DATE_OVERRIDE = "/api/owner/meeting-types/{id}/date-overrides/{date}";
+    /**
+     * DELETE /api/owner/meeting-types/{id}/date-overrides/{date}
+     *
+     * @param id  (required)
+     * @param date  (required)
+     * @param idempotencyKey  (required)
+     * @param deleteDateOverrideCommand  (required)
+     * @return The request has succeeded. (status code 200)
+     *         or The server could not understand the request due to invalid syntax. (status code 400)
+     *         or The server cannot find the requested resource. (status code 404)
+     *         or The request conflicts with the current state of the server. (status code 409)
+     *         or Client error (status code 422)
+     */
+    @RequestMapping(
+        method = RequestMethod.DELETE,
+        value = OwnerApi.PATH_DELETE_DATE_OVERRIDE,
+        produces = { "application/json" },
+        consumes = { "application/json" }
+    )
+    ResponseEntity<MeetingType> deleteDateOverride(
+         @PathVariable("id") String id,
+         @PathVariable("date") String date,
+         @RequestHeader(value = "Idempotency-Key", required = true) String idempotencyKey,
+         @RequestBody DeleteDateOverrideCommand deleteDateOverrideCommand
     );
 
 
@@ -270,6 +300,34 @@ public interface OwnerApi {
     ResponseEntity<OwnerBookingList> listOwnerBookings(
          @RequestParam(value = "view", required = true) String view,
          @RequestParam(value = "status", required = false) @Nullable String status
+    );
+
+
+    String PATH_PUT_DATE_OVERRIDE = "/api/owner/meeting-types/{id}/date-overrides/{date}";
+    /**
+     * PUT /api/owner/meeting-types/{id}/date-overrides/{date}
+     *
+     * @param id  (required)
+     * @param date  (required)
+     * @param idempotencyKey  (required)
+     * @param dateOverrideCommand  (required)
+     * @return The request has succeeded. (status code 200)
+     *         or The server could not understand the request due to invalid syntax. (status code 400)
+     *         or The server cannot find the requested resource. (status code 404)
+     *         or The request conflicts with the current state of the server. (status code 409)
+     *         or Client error (status code 422)
+     */
+    @RequestMapping(
+        method = RequestMethod.PUT,
+        value = OwnerApi.PATH_PUT_DATE_OVERRIDE,
+        produces = { "application/json" },
+        consumes = { "application/json" }
+    )
+    ResponseEntity<MeetingType> putDateOverride(
+         @PathVariable("id") String id,
+         @PathVariable("date") String date,
+         @RequestHeader(value = "Idempotency-Key", required = true) String idempotencyKey,
+         @RequestBody DateOverrideCommand dateOverrideCommand
     );
 
 

@@ -20,6 +20,9 @@ import com.testproject.calendar.generated.model.CreateMeetingTypeCommand;
 import com.testproject.calendar.generated.model.UpdateMeetingTypeCommand;
 import com.testproject.calendar.generated.model.ArchiveMeetingTypeCommand;
 import com.testproject.calendar.generated.model.WeeklyHoursCommand;
+import com.testproject.calendar.generated.model.DateOverride;
+import com.testproject.calendar.generated.model.DateOverrideCommand;
+import com.testproject.calendar.generated.model.DeleteDateOverrideCommand;
 import com.testproject.calendar.generated.model.AffectedBooking;
 import com.testproject.calendar.generated.model.WorkingDay;
 import com.testproject.calendar.generated.model.WorkingInterval;
@@ -500,7 +503,73 @@ public class OwnerState {
     private record MeetingTypeEdit(String id, UpdateMeetingTypeCommand command) { }
     private record MeetingTypeArchive(String id, ArchiveMeetingTypeCommand command) { }
     private record WeeklyHoursEdit(String id, WeeklyHoursCommand command) { }
-    private record HoursImpact(String id, long version, List<WorkingDay> days, List<AffectedBooking> bookings) { }
+    private record DateOverrideEdit(String id, String date, Object command) { }
+
+    public synchronized MeetingType editDateOverride(String key, String id, String date, DateOverrideCommand command) {
+        return editDateOverride(key, id, date, command, command.getExpectedVersion(), command.getIntervals(),
+                command.getConfirmationToken());
+    }
+
+    public synchronized MeetingType editDateOverride(String key, String id, String date,
+            DeleteDateOverrideCommand command) {
+        return editDateOverride(key, id, date, command, command.getExpectedVersion(), null,
+                command.getConfirmationToken());
+    }
+
+    private MeetingType editDateOverride(String key, String id, String date, Object command, Long expectedVersion,
+            List<WorkingInterval> intervals, String confirmationToken) {
+        if (!validKey(key)) {
+            throw invalidKey();
+        }
+        var request = new DateOverrideEdit(id, date, command);
+        var saved = operations.get(key);
+        if (saved != null) {
+            if (!saved.request().equals(request)) {
+                throw new ApiFailure(409, new ApiError("IDEMPOTENCY_KEY_REUSED",
+                        "Этот ключ уже использован для другого запроса."));
+            }
+            if (saved.failure() != null) {
+                throw saved.failure();
+            }
+            return (MeetingType) saved.result();
+        }
+        try {
+            requireTypeVersionValue(expectedVersion);
+            var current = meetingType(id);
+            requireTypeVersion(current, expectedVersion);
+            try {
+                if (!date.matches("[0-9]{4}-[0-9]{2}-[0-9]{2}")) {
+                    throw new java.time.DateTimeException("Invalid date format");
+                }
+                java.time.LocalDate.parse(date);
+            } catch (java.time.DateTimeException exception) {
+                throw invalidHours("date", "Укажите существующую дату ГГГГ-ММ-ДД в поясе типа.");
+            }
+            var overrides = new ArrayList<>(current.getDateOverrides().stream()
+                    .filter(value -> !value.getDate().equals(date)).toList());
+            if (command instanceof DateOverrideCommand) {
+                var canonical = canonicalIntervals(intervals, "intervals");
+                overrides.add(new DateOverride(date, canonical));
+            }
+            overrides.sort(java.util.Comparator.comparing(DateOverride::getDate));
+            var result = new MeetingType(current.getId(), current.getTitle(), current.getDescription(),
+                    current.getDurationMinutes(), current.getRequiresApproval(), current.getTimeZone(),
+                    current.getVersion() + 1, false, current.getDays(), overrides);
+            var proposal = new DateProposal(command instanceof DateOverrideCommand ? "PUT" : "DELETE", date,
+                    overrides.stream().filter(value -> value.getDate().equals(date))
+                            .map(DateOverride::getIntervals).findFirst().orElse(List.of()));
+            requireAvailabilityConsent(current, result, proposal, confirmationToken);
+            meetingTypes.put(id, result);
+            operations.put(key, new SavedCommand(request, result, null));
+            return result;
+        } catch (ApiFailure failure) {
+            operations.put(key, new SavedCommand(request, null, failure));
+            throw failure;
+        }
+    }
+
+    private record DateProposal(String operation, String date, List<WorkingInterval> intervals) { }
+    private record HoursImpact(String id, long version, Object proposal, List<AffectedBooking> bookings) { }
     private final Map<String, HoursImpact> hoursConfirmations = new HashMap<>();
 
     public synchronized MeetingType updateWeeklyHours(String key, String id, WeeklyHoursCommand command) {
@@ -527,36 +596,41 @@ public class OwnerState {
             var result = new MeetingType(current.getId(), current.getTitle(), current.getDescription(),
                     current.getDurationMinutes(), current.getRequiresApproval(), current.getTimeZone(),
                     current.getVersion() + 1, false, days, current.getDateOverrides());
-            // Expiry, impact comparison, token verification and save share the owner-state monitor.
-            // Owner decision #27: only NEW invalidity for active bookings strictly in the future.
-            var now = clock.instant();
-            refreshBookings(now);
-            var affected = bookings.values().stream()
-                    .filter(booking -> booking.getMeetingTypeId().equals(id)
-                            && booking.getStartsAt().toInstant().isAfter(now)
-                            && (booking.getStatus() == BookingDetails.StatusEnum.PENDING
-                            || booking.getStatus() == BookingDetails.StatusEnum.CONFIRMED))
-                    .filter(booking -> fitsHours(current, booking) && !fitsHours(result, booking))
-                    .sorted(java.util.Comparator.comparing(booking -> booking.getStartsAt().toInstant()))
-                    .map(booking -> new AffectedBooking(booking.getId(), booking.getMeetingTypeId(),
-                            booking.getTitle(), booking.getGuestName(), booking.getStartsAt(), booking.getEndsAt(),
-                            AffectedBooking.StatusEnum.valueOf(booking.getStatus().name()), booking.getVersion()))
-                    .toList();
-            var impact = new HoursImpact(id, current.getVersion(), days, affected);
-            if ((!affected.isEmpty() || command.getConfirmationToken() != null)
-                    && !impact.equals(hoursConfirmations.get(command.getConfirmationToken()))) {
-                var token = randomToken();
-                hoursConfirmations.put(token, impact);
-                throw new ApiFailure(409, new ApiError("IMPACT_CONFIRMATION_REQUIRED",
-                        "Изменение закроет время показанных бронирований. Они не будут отменены или перенесены.")
-                        .affectedBookings(affected).confirmationToken(token));
-            }
+            requireAvailabilityConsent(current, result, days, command.getConfirmationToken());
             meetingTypes.put(id, result);
             operations.put(key, new SavedCommand(request, result, null));
             return result;
         } catch (ApiFailure failure) {
             operations.put(key, new SavedCommand(request, null, failure));
             throw failure;
+        }
+    }
+
+    private void requireAvailabilityConsent(MeetingType current, MeetingType result, Object proposal,
+            String confirmationToken) {
+        // Expiry, impact comparison, token verification and save share the owner-state monitor.
+        // Owner decision #27: only NEW invalidity for active bookings strictly in the future.
+        var now = clock.instant();
+        refreshBookings(now);
+        var affected = bookings.values().stream()
+                .filter(booking -> booking.getMeetingTypeId().equals(current.getId())
+                        && booking.getStartsAt().toInstant().isAfter(now)
+                        && (booking.getStatus() == BookingDetails.StatusEnum.PENDING
+                        || booking.getStatus() == BookingDetails.StatusEnum.CONFIRMED))
+                .filter(booking -> fitsHours(current, booking) && !fitsHours(result, booking))
+                .sorted(java.util.Comparator.comparing(booking -> booking.getStartsAt().toInstant()))
+                .map(booking -> new AffectedBooking(booking.getId(), booking.getMeetingTypeId(),
+                        booking.getTitle(), booking.getGuestName(), booking.getStartsAt(), booking.getEndsAt(),
+                        AffectedBooking.StatusEnum.valueOf(booking.getStatus().name()), booking.getVersion()))
+                .toList();
+        var impact = new HoursImpact(current.getId(), current.getVersion(), proposal, affected);
+        if ((!affected.isEmpty() || confirmationToken != null)
+                && !impact.equals(hoursConfirmations.get(confirmationToken))) {
+            var token = randomToken();
+            hoursConfirmations.put(token, impact);
+            throw new ApiFailure(409, new ApiError("IMPACT_CONFIRMATION_REQUIRED",
+                    "Изменение закроет время показанных бронирований. Они не будут отменены или перенесены.")
+                    .affectedBookings(affected).confirmationToken(token));
         }
     }
 
@@ -576,31 +650,40 @@ public class OwnerState {
             if (day == null || day.getDay() == null || !seen.add(day.getDay()) || day.getIntervals() == null) {
                 throw invalidHours("days[" + i + "]", "Укажите уникальный день и его интервалы.");
             }
-            for (int j = 0; j < day.getIntervals().size(); j++) {
-                var interval = day.getIntervals().get(j);
-                if (interval == null || !validTime(interval.getStart(), false)
-                        || !validTime(interval.getEnd(), true)
-                        || interval.getStart().compareTo(interval.getEnd()) >= 0) {
-                    throw invalidHours("days[" + i + "].intervals[" + j + "]",
-                            "Введите интервал ЧЧ:ММ от 00:00 до 24:00; начало раньше конца, 24:00 только конец.");
-                }
-            }
+            result.add(new WorkingDay(day.getDay(), canonicalIntervals(day.getIntervals(),
+                    "days[" + i + "].intervals")));
         }
+        var ordered = new ArrayList<WorkingDay>();
         for (var day : WorkingDay.DayEnum.values()) {
-            var merged = new ArrayList<WorkingInterval>();
-            var intervals = days.stream().filter(value -> value.getDay() == day)
-                    .flatMap(value -> value.getIntervals().stream())
-                    .sorted(java.util.Comparator.comparing(WorkingInterval::getStart)).toList();
-            for (var interval : intervals) {
-                if (merged.isEmpty() || merged.getLast().getEnd().compareTo(interval.getStart()) < 0) {
-                    merged.add(new WorkingInterval(interval.getStart(), interval.getEnd()));
-                } else if (merged.getLast().getEnd().compareTo(interval.getEnd()) < 0) {
-                    merged.getLast().setEnd(interval.getEnd());
-                }
-            }
-            result.add(new WorkingDay(day, merged));
+            ordered.add(result.stream().filter(value -> value.getDay() == day).findFirst()
+                    .orElseGet(() -> new WorkingDay(day, List.of())));
         }
-        return result;
+        return ordered;
+    }
+
+    private List<WorkingInterval> canonicalIntervals(List<WorkingInterval> intervals, String field) {
+        if (intervals == null) {
+            throw invalidHours(field, "Укажите массив интервалов; пустой массив закрывает день.");
+        }
+        for (int i = 0; i < intervals.size(); i++) {
+            var interval = intervals.get(i);
+            if (interval == null || !validTime(interval.getStart(), false)
+                    || !validTime(interval.getEnd(), true)
+                    || interval.getStart().compareTo(interval.getEnd()) >= 0) {
+                throw invalidHours(field + "[" + i + "]",
+                        "Введите интервал ЧЧ:ММ от 00:00 до 24:00; начало раньше конца, 24:00 только конец.");
+            }
+        }
+        var merged = new ArrayList<WorkingInterval>();
+        for (var interval : intervals.stream()
+                .sorted(java.util.Comparator.comparing(WorkingInterval::getStart)).toList()) {
+            if (merged.isEmpty() || merged.getLast().getEnd().compareTo(interval.getStart()) < 0) {
+                merged.add(new WorkingInterval(interval.getStart(), interval.getEnd()));
+            } else if (merged.getLast().getEnd().compareTo(interval.getEnd()) < 0) {
+                merged.getLast().setEnd(interval.getEnd());
+            }
+        }
+        return merged;
     }
 
     private boolean validTime(String value, boolean end) {

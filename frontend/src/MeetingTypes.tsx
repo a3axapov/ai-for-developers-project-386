@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { WeeklyHours } from './WeeklyHours';
+import { DateOverrides } from './DateOverrides';
+import { dateLabel } from './displayTime';
 import {
   createMeetingType,
   updateMeetingType,
@@ -53,6 +55,7 @@ export function MeetingTypes({
 }) {
   const [items, setItems] = useState<MeetingType[]>([]);
   const [hoursItem, setHoursItem] = useState<MeetingType>();
+  const [overrideItem, setOverrideItem] = useState<MeetingType>();
   const [hoursBlocked, setHoursBlocked] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -355,6 +358,16 @@ export function MeetingTypes({
                 </li>
               ))}
             </ul>
+            <ul aria-label="Исключения дат">
+              {item.dateOverrides.map((override) => (
+                <li key={override.date}>
+                  {dateLabel(override.date)}:{' '}
+                  {override.intervals
+                    .map((value) => `${value.start}–${value.end}`)
+                    .join(', ') || 'Закрыто'}
+                </li>
+              ))}
+            </ul>
             <p className="booking-link">
               <a href={path}>{new URL(path, window.location.origin).href}</a>
             </p>
@@ -374,6 +387,13 @@ export function MeetingTypes({
                   onClick={() => setHoursItem(item)}
                 >
                   Настроить рабочие часы
+                </button>
+                <button
+                  className="button"
+                  disabled={locked}
+                  onClick={() => setOverrideItem(item)}
+                >
+                  Настроить исключения дат
                 </button>
                 <button
                   className="button"
@@ -427,6 +447,28 @@ export function MeetingTypes({
               previous.map((value) => (value.id === item.id ? item : value)),
             );
             setHoursItem(undefined);
+          }}
+        />
+      )}
+      {overrideItem && (
+        <DateOverrides
+          key={overrideItem.id}
+          item={overrideItem}
+          blocked={locked}
+          onLockChange={(value) => {
+            setHoursBlocked(value);
+            onLockChange(value);
+          }}
+          onClose={() => setOverrideItem(undefined)}
+          onReload={(items, profile) => {
+            setItems(items);
+            onProfileLoaded(profile);
+          }}
+          onSaved={(item) => {
+            setItems((previous) =>
+              previous.map((value) => (value.id === item.id ? item : value)),
+            );
+            setOverrideItem(undefined);
           }}
         />
       )}

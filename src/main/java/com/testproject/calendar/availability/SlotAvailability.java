@@ -43,7 +43,10 @@ public class SlotAvailability {
         var ranges = new ArrayList<Range>();
         for (var date = first; !date.isAfter(last); date = date.plusDays(1)) {
             var day = date;
-            var intervals = type.getDays().stream().filter(value -> value.getDay().name()
+            var override = type.getDateOverrides().stream()
+                    .filter(value -> value.getDate().equals(day.toString())).findFirst();
+            var intervals = override.isPresent() ? override.get().getIntervals()
+                    : type.getDays().stream().filter(value -> value.getDay().name()
                     .equals(day.getDayOfWeek().name())).flatMap(value -> value.getIntervals().stream()).toList();
             for (var interval : intervals) {
                 var from = date.atTime(LocalTime.parse(interval.getStart()));
