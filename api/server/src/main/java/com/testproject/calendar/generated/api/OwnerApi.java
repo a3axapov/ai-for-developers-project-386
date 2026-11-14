@@ -62,6 +62,33 @@ public interface OwnerApi {
     );
 
 
+    String PATH_CANCEL_OWNER_BOOKING = "/api/owner/bookings/{id}/cancel";
+    /**
+     * POST /api/owner/bookings/{id}/cancel
+     * Cancel only a CONFIRMED booking strictly before start, including archived types and disabled public booking. Atomically checks expectedVersion, status and time. The UI must identify the meeting and explicitly confirm irreversible release of only its occupancy, without promising a free slot. Preserves details and result link. Uses the shared owner operation journal; repeats return immutable saved outcomes.
+     *
+     * @param id  (required)
+     * @param idempotencyKey  (required)
+     * @param bookingDecisionCommand  (required)
+     * @return The request has succeeded. (status code 200)
+     *         or The server could not understand the request due to invalid syntax. (status code 400)
+     *         or The server cannot find the requested resource. (status code 404)
+     *         or The request conflicts with the current state of the server. (status code 409)
+     *         or Client error (status code 422)
+     */
+    @RequestMapping(
+        method = RequestMethod.POST,
+        value = OwnerApi.PATH_CANCEL_OWNER_BOOKING,
+        produces = { "application/json" },
+        consumes = { "application/json" }
+    )
+    ResponseEntity<BookingDetails> cancelOwnerBooking(
+         @PathVariable("id") String id,
+         @RequestHeader(value = "Idempotency-Key", required = true) String idempotencyKey,
+         @RequestBody BookingDecisionCommand bookingDecisionCommand
+    );
+
+
     String PATH_CONFIRM_OWNER_BOOKING = "/api/owner/bookings/{id}/confirm";
     /**
      * POST /api/owner/bookings/{id}/confirm

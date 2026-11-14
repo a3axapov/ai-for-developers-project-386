@@ -238,6 +238,67 @@ paths:
                 $ref: '#/components/schemas/ApiError'
       tags:
         - Owner
+  /api/owner/bookings/{id}/cancel:
+    post:
+      operationId: cancelOwnerBooking
+      description: Cancel only a CONFIRMED booking strictly before start, including archived types and disabled public booking. Atomically checks expectedVersion, status and time. The UI must identify the meeting and explicitly confirm irreversible release of only its occupancy, without promising a free slot. Preserves details and result link. Uses the shared owner operation journal; repeats return immutable saved outcomes.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/IdempotencyKey'
+      responses:
+        '200':
+          description: The request has succeeded.
+          headers:
+            Cache-Control:
+              required: true
+              schema:
+                type: string
+                enum:
+                  - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingDetails'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: The request conflicts with the current state of the server.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      tags:
+        - Owner
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingDecisionCommand'
   /api/owner/bookings/{id}/confirm:
     post:
       operationId: confirmOwnerBooking

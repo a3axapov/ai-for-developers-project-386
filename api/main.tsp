@@ -396,6 +396,25 @@ model BookingDecisionCommand {
 }
 
 @post
+@route("/owner/bookings/{id}/cancel")
+@tag("Owner")
+@operationId("cancelOwnerBooking")
+@doc("Cancel only a CONFIRMED booking strictly before start, including archived types and disabled public booking. Atomically checks expectedVersion, status and time. The UI must identify the meeting and explicitly confirm irreversible release of only its occupancy, without promising a free slot. Preserves details and result link. Uses the shared owner operation journal; repeats return immutable saved outcomes.")
+op cancelOwnerBooking(
+  @path id: string,
+  @header("Idempotency-Key") idempotencyKey: IdempotencyKey,
+  @body command: BookingDecisionCommand,
+):
+  | {
+      @header("Cache-Control") cacheControl: "no-store";
+      @body body: BookingDetails;
+    }
+  | PageNotFound
+  | StateConflict
+  | InvalidData
+  | MalformedRequest;
+
+@post
 @route("/owner/bookings/{id}/reject")
 @tag("Owner")
 @operationId("rejectOwnerBooking")

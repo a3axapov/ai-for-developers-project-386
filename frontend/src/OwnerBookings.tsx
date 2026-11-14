@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   confirmOwnerBooking,
+  cancelOwnerBooking,
   rejectOwnerBooking,
   getOwnerBooking,
   getOwnerOperation,
@@ -133,12 +134,19 @@ export function OwnerBookings({
     }
   }
 
-  async function decideBooking(action: 'confirm' | 'reject') {
+  async function decideBooking(action: 'confirm' | 'reject' | 'cancel') {
     if (!details || locked || blocked || detailLoading || loading) return;
     if (
       action === 'reject' &&
       !window.confirm(
         'Отклонение освободит занятость этого запроса. Восстановить его невозможно. Это не гарантирует свободный слот: другие ограничения продолжают действовать. Отклонить запрос?',
+      )
+    )
+      return;
+    if (
+      action === 'cancel' &&
+      !window.confirm(
+        `Отменить встречу «${details.title}» с гостем ${details.guestName}: ${interval(details, details.ownerTimeZone)} (${details.ownerTimeZone})? Отмена освободит только занятость этой встречи. Восстановить её невозможно. Это не гарантирует свободный слот: другие ограничения продолжают действовать.`,
       )
     )
       return;
@@ -148,7 +156,11 @@ export function OwnerBookings({
     const key = crypto.randomUUID();
     try {
       const result = await (
-        action === 'confirm' ? confirmOwnerBooking : rejectOwnerBooking
+        action === 'cancel'
+          ? cancelOwnerBooking
+          : action === 'confirm'
+            ? confirmOwnerBooking
+            : rejectOwnerBooking
       )({
         path: { id: details.id },
         headers: { 'Idempotency-Key': key },
@@ -423,6 +435,15 @@ export function OwnerBookings({
               <p>{details.guestEmail}</p>
               <p className="meeting-description">{details.comment}</p>
               <p>Версия: {details.version}</p>
+              {details.status === 'CONFIRMED' && (
+                <button
+                  className="button"
+                  disabled={locked || blocked || detailLoading || loading}
+                  onClick={() => void decideBooking('cancel')}
+                >
+                  Отменить встречу
+                </button>
+              )}
               {details.status === 'PENDING' && (
                 <>
                   <button

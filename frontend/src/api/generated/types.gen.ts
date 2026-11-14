@@ -464,6 +464,48 @@ export type GetOwnerBookingResponses = {
 
 export type GetOwnerBookingResponse = GetOwnerBookingResponses[keyof GetOwnerBookingResponses];
 
+export type CancelOwnerBookingData = {
+    body: BookingDecisionCommand;
+    headers: {
+        'Idempotency-Key': IdempotencyKey;
+    };
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/owner/bookings/{id}/cancel';
+};
+
+export type CancelOwnerBookingErrors = {
+    /**
+     * The server could not understand the request due to invalid syntax.
+     */
+    400: ApiError;
+    /**
+     * The server cannot find the requested resource.
+     */
+    404: ApiError;
+    /**
+     * The request conflicts with the current state of the server.
+     */
+    409: ApiError;
+    /**
+     * Client error
+     */
+    422: ApiError;
+};
+
+export type CancelOwnerBookingError = CancelOwnerBookingErrors[keyof CancelOwnerBookingErrors];
+
+export type CancelOwnerBookingResponses = {
+    /**
+     * The request has succeeded.
+     */
+    200: BookingDetails;
+};
+
+export type CancelOwnerBookingResponse = CancelOwnerBookingResponses[keyof CancelOwnerBookingResponses];
+
 export type ConfirmOwnerBookingData = {
     body: BookingDecisionCommand;
     headers: {

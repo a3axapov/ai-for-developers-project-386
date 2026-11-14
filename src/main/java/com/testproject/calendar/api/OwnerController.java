@@ -34,6 +34,13 @@ public class OwnerController implements OwnerApi {
     }
 
     @Override
+    public ResponseEntity<BookingDetails> cancelOwnerBooking(
+            String id, String idempotencyKey, BookingDecisionCommand command) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(owner.decideBooking(idempotencyKey, id, "cancel", command));
+    }
+
+    @Override
     public ResponseEntity<BookingDetails> confirmOwnerBooking(
             String id, String idempotencyKey, BookingDecisionCommand command) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())

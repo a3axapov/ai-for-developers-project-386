@@ -224,7 +224,7 @@ public class OwnerState {
                                 "Укажите целую версию не меньше 1."))));
             }
             var current = ownerBooking(id);
-            requirePendingVersion(current, command.getExpectedVersion());
+            requireDecisionVersion(current, command.getExpectedVersion(), action);
             if (action.equals("confirm")) {
                 var type = meetingType(current.getMeetingTypeId());
                 var start = current.getStartsAt().toInstant();
@@ -238,9 +238,9 @@ public class OwnerState {
                 }
             }
             // Re-read time immediately before committing, still under the same state lock.
-            requirePendingVersion(ownerBooking(id), command.getExpectedVersion());
+            requireDecisionVersion(ownerBooking(id), command.getExpectedVersion(), action);
             var booking = bookings.get(id);
-            booking.setStatus(action.equals("confirm")
+            booking.setStatus(action.equals("cancel") ? BookingDetails.StatusEnum.CANCELLED : action.equals("confirm")
                     ? BookingDetails.StatusEnum.CONFIRMED : BookingDetails.StatusEnum.REJECTED);
             booking.setVersion(booking.getVersion() + 1);
             var result = bookingSnapshot(booking);
@@ -252,13 +252,16 @@ public class OwnerState {
         }
     }
 
-    private void requirePendingVersion(BookingDetails booking, long expectedVersion) {
+    private void requireDecisionVersion(BookingDetails booking, long expectedVersion, String action) {
         if (booking.getVersion() != expectedVersion) {
             throw new ApiFailure(409, new ApiError("RESOURCE_CHANGED",
                     "Бронирование изменилось. Проверьте актуальные данные.").currentBooking(booking));
         }
         // ownerBooking refreshes expiry using one clock reading under this same lock.
-        if (booking.getStatus() != BookingDetails.StatusEnum.PENDING) {
+        var requiredStatus = action.equals("cancel")
+                ? BookingDetails.StatusEnum.CONFIRMED : BookingDetails.StatusEnum.PENDING;
+        if (booking.getStatus() != requiredStatus
+                || !clock.instant().isBefore(booking.getStartsAt().toInstant())) {
             throw new ApiFailure(409, new ApiError("ACTION_NOT_ALLOWED",
                     "Действие недоступно для текущего статуса или времени.").currentBooking(booking));
         }
