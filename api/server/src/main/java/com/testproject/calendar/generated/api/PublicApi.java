@@ -7,6 +7,7 @@ package com.testproject.calendar.generated.api;
 
 import com.testproject.calendar.generated.model.ApiError;
 import com.testproject.calendar.generated.model.BookingAttemptResult;
+import com.testproject.calendar.generated.model.BookingDecisionCommand;
 import com.testproject.calendar.generated.model.BookingDetails;
 import com.testproject.calendar.generated.model.BookingEntry;
 import org.springframework.lang.Nullable;
@@ -30,6 +31,31 @@ import jakarta.annotation.Generated;
 
 @RequestMapping("${openapi.calendar.base-path:}")
 public interface PublicApi {
+
+    String PATH_CANCEL_GUEST_BOOKING = "/api/bookings/{accessToken}/cancel";
+    /**
+     * POST /api/bookings/{accessToken}/cancel
+     * Explicitly withdraw or cancel the shown booking before its start. An already cancelled booking returns its current result without mutation.
+     *
+     * @param accessToken  (required)
+     * @param bookingDecisionCommand  (required)
+     * @return The request has succeeded. (status code 200)
+     *         or The server could not understand the request due to invalid syntax. (status code 400)
+     *         or The server cannot find the requested resource. (status code 404)
+     *         or The request conflicts with the current state of the server. (status code 409)
+     *         or Client error (status code 422)
+     */
+    @RequestMapping(
+        method = RequestMethod.POST,
+        value = PublicApi.PATH_CANCEL_GUEST_BOOKING,
+        produces = { "application/json" },
+        consumes = { "application/json" }
+    )
+    ResponseEntity<BookingDetails> cancelGuestBooking(
+         @PathVariable("accessToken") String accessToken,
+         @RequestBody BookingDecisionCommand bookingDecisionCommand
+    );
+
 
     String PATH_GET_BOOKING_ATTEMPT = "/api/booking-attempts/{attemptId}";
     /**

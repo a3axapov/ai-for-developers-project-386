@@ -476,7 +476,7 @@ public class BookingDetails {
   }
 
   /**
-   * Get allowedActions
+   * Currently contains cancel only for PENDING or CONFIRMED strictly before start. No export action is implemented yet.
    * @return allowedActions
    */
   @JsonProperty("allowedActions")

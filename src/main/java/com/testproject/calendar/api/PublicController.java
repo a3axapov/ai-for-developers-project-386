@@ -37,6 +37,13 @@ public class PublicController implements PublicApi {
     }
 
     @Override
+    public ResponseEntity<BookingDetails> cancelGuestBooking(String accessToken,
+            com.testproject.calendar.generated.model.BookingDecisionCommand command) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(owner.cancelGuestBooking(accessToken, command));
+    }
+
+    @Override
     public ResponseEntity<BookingDetails> getBookingResult(String accessToken) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(owner.bookingResult(accessToken));
     }

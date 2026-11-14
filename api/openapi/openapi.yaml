@@ -149,6 +149,62 @@ paths:
                 $ref: '#/components/schemas/ApiError'
       tags:
         - Public
+  /api/bookings/{accessToken}/cancel:
+    post:
+      operationId: cancelGuestBooking
+      description: Explicitly withdraw or cancel the shown booking before its start. An already cancelled booking returns its current result without mutation.
+      parameters:
+        - name: accessToken
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          headers:
+            Cache-Control:
+              required: true
+              schema:
+                type: string
+                enum:
+                  - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingDetails'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: The request conflicts with the current state of the server.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      tags:
+        - Public
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingDecisionCommand'
   /api/health:
     get:
       operationId: getHealth
@@ -1153,6 +1209,7 @@ components:
           type: array
           items:
             type: string
+          description: Currently contains cancel only for PENDING or CONFIRMED strictly before start. No export action is implemented yet.
       description: Saved booking conditions and contacts with current time, status and version.
     BookingEntry:
       type: object

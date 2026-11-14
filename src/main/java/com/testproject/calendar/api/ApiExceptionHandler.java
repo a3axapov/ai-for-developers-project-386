@@ -29,7 +29,8 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiError> handleMalformedBody(HttpServletRequest request) {
-        if (request.getRequestURI().startsWith("/api/public/")) {
+        if (request.getRequestURI().startsWith("/api/public/")
+                || request.getRequestURI().startsWith("/api/bookings/")) {
             return malformedPublicRequest();
         }
         var raw = request.getAttribute(CommandBodyAdvice.RAW_BODY);
@@ -53,7 +54,8 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
     public ResponseEntity<ApiError> handleNonJsonBody(HttpServletRequest request) throws IOException {
-        if (request.getRequestURI().startsWith("/api/public/")) {
+        if (request.getRequestURI().startsWith("/api/public/")
+                || request.getRequestURI().startsWith("/api/bookings/")) {
             return malformedPublicRequest();
         }
         var body = new String(request.getInputStream().readAllBytes(), StandardCharsets.UTF_8);

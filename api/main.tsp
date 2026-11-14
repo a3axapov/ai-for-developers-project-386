@@ -377,6 +377,8 @@ model BookingDetails {
   guestEmail: string;
   comment: string;
   version: int64;
+
+  @doc("Currently contains cancel only for PENDING or CONFIRMED strictly before start. No export action is implemented yet.")
   allowedActions: string[];
 }
 
@@ -524,6 +526,24 @@ op getBookingResult(@path accessToken: string):
       @body body: BookingDetails;
     }
   | PageNotFound;
+
+@post
+@route("/bookings/{accessToken}/cancel")
+@tag("Public")
+@operationId("cancelGuestBooking")
+@doc("Explicitly withdraw or cancel the shown booking before its start. An already cancelled booking returns its current result without mutation.")
+op cancelGuestBooking(
+  @path accessToken: string,
+  @body command: BookingDecisionCommand,
+):
+  | {
+      @header("Cache-Control") cacheControl: "no-store";
+      @body body: BookingDetails;
+    }
+  | PageNotFound
+  | StateConflict
+  | InvalidData
+  | MalformedRequest;
 
 @post
 @route("/booking-attempts/{attemptId}/submit")

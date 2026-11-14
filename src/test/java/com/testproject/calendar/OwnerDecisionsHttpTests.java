@@ -194,6 +194,7 @@ class OwnerDecisionsHttpTests {
             var rejected = json.readTree(response.body());
             var expected = booking.deepCopy();
             ((tools.jackson.databind.node.ObjectNode) expected).put("status", "REJECTED").put("version", 2);
+            ((tools.jackson.databind.node.ObjectNode) expected).set("allowedActions", json.readTree("[]"));
             assertEquals(expected, rejected);
             assertEquals(0, get(app, "/api/owner/bookings?view=upcoming").get("items").size());
             assertEquals(rejected, get(app, "/api/owner/bookings?view=history").get("items").get(0));
@@ -244,7 +245,11 @@ class OwnerDecisionsHttpTests {
             assertEquals(confirmed, get(app, "/api/owner/operations/confirm-key").get("booking"));
             assertEquals(confirmed, json.readTree(decide(app, booking, "confirm", "confirm-key").body()));
             clock.set("2026-11-02T06:00:00Z");
-            assertEquals(confirmed, get(app, "/api/owner/bookings/" + booking.get("id").asString()));
+            var started = confirmed.deepCopy();
+            ((tools.jackson.databind.node.ObjectNode) started).set("allowedActions", json.readTree("[]"));
+            assertEquals(started, get(app, "/api/owner/bookings/" + booking.get("id").asString()));
+            // The operation is still the original snapshot, not a fresh set of guest actions.
+            assertEquals(confirmed, get(app, "/api/owner/operations/confirm-key").get("booking"));
         }
     }
 

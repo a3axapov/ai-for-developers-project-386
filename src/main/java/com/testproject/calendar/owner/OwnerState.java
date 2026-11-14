@@ -154,7 +154,7 @@ public class OwnerState {
                 type.getTitle(), type.getDescription(), type.getDurationMinutes(), type.getRequiresApproval(),
                 attempt.startsAt, attempt.startsAt.plusMinutes(type.getDurationMinutes()),
                 type.getRequiresApproval() ? BookingDetails.StatusEnum.PENDING : BookingDetails.StatusEnum.CONFIRMED,
-                attempt.guestName, attempt.guestEmail, attempt.comment, 1L, List.of());
+                attempt.guestName, attempt.guestEmail, attempt.comment, 1L, List.of("cancel"));
         var token = randomToken();
         while (resultLinks.containsKey(token)) {
             token = randomToken();
@@ -195,6 +195,34 @@ public class OwnerState {
             throw new ApiFailure(404, new ApiError("BOOKING_NOT_FOUND", "Бронирование не найдено"));
         }
         refreshBookings();
+        return bookingSnapshot(booking);
+    }
+
+    public synchronized BookingDetails cancelGuestBooking(String token, BookingDecisionCommand command) {
+        var current = bookingResult(token);
+        if (command.getExpectedVersion() == null || command.getExpectedVersion() < 1) {
+            throw new ApiFailure(422, new ApiError("VALIDATION_FAILED", "Проверьте данные запроса.")
+                    .fieldErrors(List.of(new FieldError("expectedVersion", "INVALID_VALUE",
+                            "Укажите целую версию не меньше 1."))));
+        }
+        if (current.getStatus() == BookingDetails.StatusEnum.CANCELLED) {
+            return current;
+        }
+        if (current.getVersion() != command.getExpectedVersion()) {
+            throw new ApiFailure(409, new ApiError("RESOURCE_CHANGED",
+                    "Бронирование изменилось. Проверьте актуальные данные и подтвердите отмену заново.")
+                    .currentBooking(current));
+        }
+        if ((current.getStatus() != BookingDetails.StatusEnum.PENDING
+                && current.getStatus() != BookingDetails.StatusEnum.CONFIRMED)
+                || !clock.instant().isBefore(current.getStartsAt().toInstant())) {
+            throw new ApiFailure(409, new ApiError("ACTION_NOT_ALLOWED",
+                    "Действие недоступно для текущего статуса или времени.").currentBooking(current));
+        }
+        var booking = resultLinks.get(token);
+        booking.setStatus(BookingDetails.StatusEnum.CANCELLED);
+        booking.setVersion(booking.getVersion() + 1);
+        booking.setAllowedActions(List.of());
         return bookingSnapshot(booking);
     }
 
@@ -243,6 +271,7 @@ public class OwnerState {
             booking.setStatus(action.equals("cancel") ? BookingDetails.StatusEnum.CANCELLED : action.equals("confirm")
                     ? BookingDetails.StatusEnum.CONFIRMED : BookingDetails.StatusEnum.REJECTED);
             booking.setVersion(booking.getVersion() + 1);
+            refreshBookings();
             var result = bookingSnapshot(booking);
             operations.put(key, new SavedCommand(request, result, null));
             return result;
@@ -312,6 +341,9 @@ public class OwnerState {
                 booking.setRejectionReason(BookingDetails.RejectionReasonEnum.APPROVAL_EXPIRED);
                 booking.setVersion(booking.getVersion() + 1);
             }
+            booking.setAllowedActions((booking.getStatus() == BookingDetails.StatusEnum.PENDING
+                    || booking.getStatus() == BookingDetails.StatusEnum.CONFIRMED)
+                    && now.isBefore(booking.getStartsAt().toInstant()) ? List.of("cancel") : List.of());
         }
     }
 

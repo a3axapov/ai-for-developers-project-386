@@ -52,6 +52,9 @@ export type BookingDetails = {
     guestEmail: string;
     comment: string;
     version: number;
+    /**
+     * Currently contains cancel only for PENDING or CONFIRMED strictly before start. No export action is implemented yet.
+     */
     allowedActions: Array<string>;
 };
 
@@ -388,6 +391,45 @@ export type GetBookingResultResponses = {
 };
 
 export type GetBookingResultResponse = GetBookingResultResponses[keyof GetBookingResultResponses];
+
+export type CancelGuestBookingData = {
+    body: BookingDecisionCommand;
+    path: {
+        accessToken: string;
+    };
+    query?: never;
+    url: '/api/bookings/{accessToken}/cancel';
+};
+
+export type CancelGuestBookingErrors = {
+    /**
+     * The server could not understand the request due to invalid syntax.
+     */
+    400: ApiError;
+    /**
+     * The server cannot find the requested resource.
+     */
+    404: ApiError;
+    /**
+     * The request conflicts with the current state of the server.
+     */
+    409: ApiError;
+    /**
+     * Client error
+     */
+    422: ApiError;
+};
+
+export type CancelGuestBookingError = CancelGuestBookingErrors[keyof CancelGuestBookingErrors];
+
+export type CancelGuestBookingResponses = {
+    /**
+     * The request has succeeded.
+     */
+    200: BookingDetails;
+};
+
+export type CancelGuestBookingResponse = CancelGuestBookingResponses[keyof CancelGuestBookingResponses];
 
 export type GetHealthData = {
     body?: never;

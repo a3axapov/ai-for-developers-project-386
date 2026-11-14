@@ -32,6 +32,7 @@ class OwnerCancellationHttpTests {
             var cancelled = json.readTree(response.body());
             var expected = booking.deepCopy();
             ((tools.jackson.databind.node.ObjectNode) expected).put("status", "CANCELLED").put("version", 2);
+            ((tools.jackson.databind.node.ObjectNode) expected).set("allowedActions", json.readTree("[]"));
             assertEquals(expected, cancelled);
             assertEquals(cancelled, get(app, "/api/owner/bookings/" + booking.get("id").asString()));
             assertEquals(cancelled, get(app, "/api" + saved.get("resultUrl").asString()));
@@ -109,6 +110,7 @@ class OwnerCancellationHttpTests {
                     assertEquals("CANCELLED", result.get("status").asString());
                     assertEquals(2, result.get("version").asInt());
                 } else {
+                    ((tools.jackson.databind.node.ObjectNode) booking).set("allowedActions", json.readTree("[]"));
                     assertEquals("ACTION_NOT_ALLOWED", result.get("code").asString());
                     assertEquals(booking, result.get("currentBooking"));
                     assertEquals(booking, get(app, "/api" + saved.get("resultUrl").asString()));
