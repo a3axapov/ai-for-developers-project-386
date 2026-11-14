@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { WeeklyHours } from './WeeklyHours';
 import {
   createMeetingType,
   updateMeetingType,
@@ -51,6 +52,8 @@ export function MeetingTypes({
   onEditChange: (editing: MeetingTypeEdit | undefined) => void;
 }) {
   const [items, setItems] = useState<MeetingType[]>([]);
+  const [hoursItem, setHoursItem] = useState<MeetingType>();
+  const [hoursBlocked, setHoursBlocked] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -64,7 +67,7 @@ export function MeetingTypes({
     'create',
   );
   const activeDraft = editing?.draft ?? draft;
-  const locked = blocked || saving || Boolean(pendingKey);
+  const locked = blocked || saving || Boolean(pendingKey) || hoursBlocked;
 
   function changeDraft(value: MeetingTypeDraft) {
     if (editing) onEditChange({ ...editing, draft: value });
@@ -127,7 +130,7 @@ export function MeetingTypes({
   }, [attempt]);
 
   async function save() {
-    if (blocked || saving || pendingKey || loading || loadError) return;
+    if (locked || loading || loadError) return;
     if (editing?.current.archived) return;
     const duration = Number(activeDraft.durationMinutes);
     if (!Number.isInteger(duration)) {
@@ -368,6 +371,13 @@ export function MeetingTypes({
                 <button
                   className="button"
                   disabled={locked}
+                  onClick={() => setHoursItem(item)}
+                >
+                  Настроить рабочие часы
+                </button>
+                <button
+                  className="button"
+                  disabled={locked}
                   onClick={() => {
                     onEditChange({
                       current: item,
@@ -398,6 +408,28 @@ export function MeetingTypes({
         );
       })}
       {copyMessage && <p role="status">{copyMessage}</p>}
+      {hoursItem && (
+        <WeeklyHours
+          key={hoursItem.id}
+          item={hoursItem}
+          blocked={locked}
+          onLockChange={(value) => {
+            setHoursBlocked(value);
+            onLockChange(value);
+          }}
+          onClose={() => setHoursItem(undefined)}
+          onReload={(items, profile) => {
+            setItems(items);
+            onProfileLoaded(profile);
+          }}
+          onSaved={(item) => {
+            setItems((previous) =>
+              previous.map((value) => (value.id === item.id ? item : value)),
+            );
+            setHoursItem(undefined);
+          }}
+        />
+      )}
       <form
         className="profile-editor"
         aria-label={

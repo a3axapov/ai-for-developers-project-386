@@ -116,6 +116,32 @@ model WorkingInterval {
   end: string;
 }
 
+model WeeklyHoursCommand {
+  @doc("Complete replacement; omitted weekdays are closed. Overlapping/touching minute intervals are merged.")
+  days: WorkingDay[];
+
+  expectedVersion: int64;
+  confirmationToken?: string;
+}
+
+@put
+@route("/owner/meeting-types/{id}/weekly-hours")
+@tag("Owner")
+@operationId("updateWeeklyHours")
+op updateWeeklyHours(
+  @path id: string,
+  @header("Idempotency-Key") idempotencyKey: IdempotencyKey,
+  @body command: WeeklyHoursCommand,
+):
+  | {
+      @header("Cache-Control") cacheControl: "no-store";
+      @body body: MeetingType;
+    }
+  | PageNotFound
+  | StateConflict
+  | InvalidData
+  | MalformedRequest;
+
 model WorkingDay {
   day:
     | "MONDAY"
@@ -195,6 +221,20 @@ model ApiError {
   currentMeetingType?: MeetingType;
   currentConditions?: PublicMeetingType;
   fieldErrors?: FieldError[];
+  affectedBookings?: AffectedBooking[];
+  confirmationToken?: string;
+}
+
+@doc("Impact preview only: no guest result link or attempt credentials. Only future PENDING/CONFIRMED bookings valid now and invalid under the proposal. Status/version/time changes require fresh consent.")
+model AffectedBooking {
+  id: string;
+  meetingTypeId: string;
+  title: string;
+  guestName: string;
+  startsAt: utcDateTime;
+  endsAt: utcDateTime;
+  status: "PENDING" | "CONFIRMED";
+  version: int64;
 }
 
 model FieldError {

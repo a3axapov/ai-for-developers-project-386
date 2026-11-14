@@ -6,6 +6,7 @@ import com.testproject.calendar.generated.model.CreateMeetingTypeCommand;
 import com.testproject.calendar.generated.model.UpdateMeetingTypeCommand;
 import com.testproject.calendar.generated.model.ArchiveMeetingTypeCommand;
 import com.testproject.calendar.generated.model.BookingDecisionCommand;
+import com.testproject.calendar.generated.model.WeeklyHoursCommand;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -35,7 +36,8 @@ public class CommandBodyAdvice extends RequestBodyAdviceAdapter {
             Class<? extends HttpMessageConverter<?>> converterType) {
         return targetType == PublicBookingCommand.class || targetType == ProfileCommand.class
                 || targetType == CreateMeetingTypeCommand.class || targetType == BookingDecisionCommand.class
-                || targetType == UpdateMeetingTypeCommand.class || targetType == ArchiveMeetingTypeCommand.class;
+                || targetType == UpdateMeetingTypeCommand.class || targetType == ArchiveMeetingTypeCommand.class
+                || targetType == WeeklyHoursCommand.class;
     }
 
     @Override

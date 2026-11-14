@@ -4,6 +4,7 @@ import java.net.URI;
 import java.util.Objects;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.testproject.calendar.generated.model.AffectedBooking;
 import com.testproject.calendar.generated.model.BookingDetails;
 import com.testproject.calendar.generated.model.FieldError;
 import com.testproject.calendar.generated.model.MeetingType;
@@ -39,6 +40,10 @@ public class ApiError {
   private @Nullable PublicMeetingType currentConditions;
 
   private @Nullable List<FieldError> fieldErrors;
+
+  private @Nullable List<AffectedBooking> affectedBookings;
+
+  private @Nullable String confirmationToken;
 
   public ApiError() {
     super();
@@ -193,6 +198,52 @@ public class ApiError {
     this.fieldErrors = fieldErrors;
   }
 
+  public ApiError affectedBookings(@Nullable List<AffectedBooking> affectedBookings) {
+    this.affectedBookings = affectedBookings;
+    return this;
+  }
+
+  public ApiError addAffectedBookingsItem(AffectedBooking affectedBookingsItem) {
+    if (this.affectedBookings == null) {
+      this.affectedBookings = new ArrayList<>();
+    }
+    this.affectedBookings.add(affectedBookingsItem);
+    return this;
+  }
+
+  /**
+   * Get affectedBookings
+   * @return affectedBookings
+   */
+  @JsonProperty("affectedBookings")
+  public @Nullable List<AffectedBooking> getAffectedBookings() {
+    return affectedBookings;
+  }
+
+  @JsonProperty("affectedBookings")
+  public void setAffectedBookings(@Nullable List<AffectedBooking> affectedBookings) {
+    this.affectedBookings = affectedBookings;
+  }
+
+  public ApiError confirmationToken(@Nullable String confirmationToken) {
+    this.confirmationToken = confirmationToken;
+    return this;
+  }
+
+  /**
+   * Get confirmationToken
+   * @return confirmationToken
+   */
+  @JsonProperty("confirmationToken")
+  public @Nullable String getConfirmationToken() {
+    return confirmationToken;
+  }
+
+  @JsonProperty("confirmationToken")
+  public void setConfirmationToken(@Nullable String confirmationToken) {
+    this.confirmationToken = confirmationToken;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -208,12 +259,14 @@ public class ApiError {
         Objects.equals(this.currentBooking, apiError.currentBooking) &&
         Objects.equals(this.currentMeetingType, apiError.currentMeetingType) &&
         Objects.equals(this.currentConditions, apiError.currentConditions) &&
-        Objects.equals(this.fieldErrors, apiError.fieldErrors);
+        Objects.equals(this.fieldErrors, apiError.fieldErrors) &&
+        Objects.equals(this.affectedBookings, apiError.affectedBookings) &&
+        Objects.equals(this.confirmationToken, apiError.confirmationToken);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(code, message, currentProfile, currentBooking, currentMeetingType, currentConditions, fieldErrors);
+    return Objects.hash(code, message, currentProfile, currentBooking, currentMeetingType, currentConditions, fieldErrors, affectedBookings, confirmationToken);
   }
 
   @Override
@@ -227,6 +280,8 @@ public class ApiError {
     sb.append("    currentMeetingType: ").append(toIndentedString(currentMeetingType)).append("\n");
     sb.append("    currentConditions: ").append(toIndentedString(currentConditions)).append("\n");
     sb.append("    fieldErrors: ").append(toIndentedString(fieldErrors)).append("\n");
+    sb.append("    affectedBookings: ").append(toIndentedString(affectedBookings)).append("\n");
+    sb.append("    confirmationToken: ").append(toIndentedString(confirmationToken)).append("\n");
     sb.append("}");
     return sb.toString();
   }

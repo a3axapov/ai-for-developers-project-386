@@ -21,6 +21,7 @@ import com.testproject.calendar.generated.model.OwnerProfile;
 import com.testproject.calendar.generated.model.ProfileCommand;
 import com.testproject.calendar.generated.model.PublicBookingCommand;
 import com.testproject.calendar.generated.model.UpdateMeetingTypeCommand;
+import com.testproject.calendar.generated.model.WeeklyHoursCommand;
 import org.springframework.http.ResponseEntity;
 
 import org.springframework.web.bind.annotation.*;
@@ -370,6 +371,32 @@ public interface OwnerApi {
     ResponseEntity<OwnerProfile> updateOwnerProfile(
          @RequestHeader(value = "Idempotency-Key", required = true) String idempotencyKey,
          @RequestBody ProfileCommand profileCommand
+    );
+
+
+    String PATH_UPDATE_WEEKLY_HOURS = "/api/owner/meeting-types/{id}/weekly-hours";
+    /**
+     * PUT /api/owner/meeting-types/{id}/weekly-hours
+     *
+     * @param id  (required)
+     * @param idempotencyKey  (required)
+     * @param weeklyHoursCommand  (required)
+     * @return The request has succeeded. (status code 200)
+     *         or The server could not understand the request due to invalid syntax. (status code 400)
+     *         or The server cannot find the requested resource. (status code 404)
+     *         or The request conflicts with the current state of the server. (status code 409)
+     *         or Client error (status code 422)
+     */
+    @RequestMapping(
+        method = RequestMethod.PUT,
+        value = OwnerApi.PATH_UPDATE_WEEKLY_HOURS,
+        produces = { "application/json" },
+        consumes = { "application/json" }
+    )
+    ResponseEntity<MeetingType> updateWeeklyHours(
+         @PathVariable("id") String id,
+         @RequestHeader(value = "Idempotency-Key", required = true) String idempotencyKey,
+         @RequestBody WeeklyHoursCommand weeklyHoursCommand
     );
 
 }

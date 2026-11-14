@@ -742,6 +742,66 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/ArchiveMeetingTypeCommand'
+  /api/owner/meeting-types/{id}/weekly-hours:
+    put:
+      operationId: updateWeeklyHours
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/IdempotencyKey'
+      responses:
+        '200':
+          description: The request has succeeded.
+          headers:
+            Cache-Control:
+              required: true
+              schema:
+                type: string
+                enum:
+                  - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeetingType'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: The request conflicts with the current state of the server.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      tags:
+        - Owner
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WeeklyHoursCommand'
   /api/owner/operations/{key}:
     get:
       operationId: getOwnerOperation
@@ -1085,6 +1145,41 @@ paths:
         - Public
 components:
   schemas:
+    AffectedBooking:
+      type: object
+      required:
+        - id
+        - meetingTypeId
+        - title
+        - guestName
+        - startsAt
+        - endsAt
+        - status
+        - version
+      properties:
+        id:
+          type: string
+        meetingTypeId:
+          type: string
+        title:
+          type: string
+        guestName:
+          type: string
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum:
+            - PENDING
+            - CONFIRMED
+        version:
+          type: integer
+          format: int64
+      description: 'Impact preview only: no guest result link or attempt credentials. Only future PENDING/CONFIRMED bookings valid now and invalid under the proposal. Status/version/time changes require fresh consent.'
     ApiError:
       type: object
       required:
@@ -1107,6 +1202,12 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/FieldError'
+        affectedBookings:
+          type: array
+          items:
+            $ref: '#/components/schemas/AffectedBooking'
+        confirmationToken:
+          type: string
     ArchiveMeetingTypeCommand:
       type: object
       required:
@@ -1603,6 +1704,22 @@ components:
         expectedVersion:
           type: integer
           format: int64
+    WeeklyHoursCommand:
+      type: object
+      required:
+        - days
+        - expectedVersion
+      properties:
+        days:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkingDay'
+          description: Complete replacement; omitted weekdays are closed. Overlapping/touching minute intervals are merged.
+        expectedVersion:
+          type: integer
+          format: int64
+        confirmationToken:
+          type: string
     WorkingDay:
       type: object
       required:

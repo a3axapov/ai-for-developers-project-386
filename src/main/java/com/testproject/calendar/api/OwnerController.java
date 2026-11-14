@@ -8,6 +8,7 @@ import com.testproject.calendar.generated.model.ProfileCommand;
 import com.testproject.calendar.generated.model.CreateMeetingTypeCommand;
 import com.testproject.calendar.generated.model.UpdateMeetingTypeCommand;
 import com.testproject.calendar.generated.model.ArchiveMeetingTypeCommand;
+import com.testproject.calendar.generated.model.WeeklyHoursCommand;
 import com.testproject.calendar.generated.model.MeetingType;
 import com.testproject.calendar.generated.model.MeetingTypeList;
 import com.testproject.calendar.generated.model.OwnerBookingList;
@@ -84,6 +85,13 @@ public class OwnerController implements OwnerApi {
             String id, String idempotencyKey, UpdateMeetingTypeCommand command) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())
                 .body(owner.updateMeetingType(idempotencyKey, id, command));
+    }
+
+    @Override
+    public ResponseEntity<MeetingType> updateWeeklyHours(
+            String id, String idempotencyKey, WeeklyHoursCommand command) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(owner.updateWeeklyHours(idempotencyKey, id, command));
     }
 
     @Override

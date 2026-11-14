@@ -493,3 +493,19 @@ h3 {
   outline: 3px solid currentColor;
   outline-offset: 2px;
 }
+.hours-interval {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: end;
+  margin-bottom: 0.75rem;
+}
+
+.hours-interval label {
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+
+.weekly-hours fieldset {
+  min-width: 0;
+}

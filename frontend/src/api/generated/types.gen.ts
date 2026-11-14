@@ -4,6 +4,20 @@ export type ClientOptions = {
     baseUrl: `${string}://${string}` | (string & {});
 };
 
+/**
+ * Impact preview only: no guest result link or attempt credentials. Only future PENDING/CONFIRMED bookings valid now and invalid under the proposal. Status/version/time changes require fresh consent.
+ */
+export type AffectedBooking = {
+    id: string;
+    meetingTypeId: string;
+    title: string;
+    guestName: string;
+    startsAt: string;
+    endsAt: string;
+    status: 'PENDING' | 'CONFIRMED';
+    version: number;
+};
+
 export type ApiError = {
     code: string;
     message: string;
@@ -12,6 +26,8 @@ export type ApiError = {
     currentMeetingType?: MeetingType;
     currentConditions?: PublicMeetingType;
     fieldErrors?: Array<FieldError>;
+    affectedBookings?: Array<AffectedBooking>;
+    confirmationToken?: string;
 };
 
 export type ArchiveMeetingTypeCommand = {
@@ -273,6 +289,15 @@ export type UpdateMeetingTypeCommand = {
     durationMinutes: number;
     requiresApproval: boolean;
     expectedVersion: number;
+};
+
+export type WeeklyHoursCommand = {
+    /**
+     * Complete replacement; omitted weekdays are closed. Overlapping/touching minute intervals are merged.
+     */
+    days: Array<WorkingDay>;
+    expectedVersion: number;
+    confirmationToken?: string;
 };
 
 export type WorkingDay = {
@@ -826,6 +851,48 @@ export type ArchiveMeetingTypeResponses = {
 };
 
 export type ArchiveMeetingTypeResponse = ArchiveMeetingTypeResponses[keyof ArchiveMeetingTypeResponses];
+
+export type UpdateWeeklyHoursData = {
+    body: WeeklyHoursCommand;
+    headers: {
+        'Idempotency-Key': IdempotencyKey;
+    };
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/owner/meeting-types/{id}/weekly-hours';
+};
+
+export type UpdateWeeklyHoursErrors = {
+    /**
+     * The server could not understand the request due to invalid syntax.
+     */
+    400: ApiError;
+    /**
+     * The server cannot find the requested resource.
+     */
+    404: ApiError;
+    /**
+     * The request conflicts with the current state of the server.
+     */
+    409: ApiError;
+    /**
+     * Client error
+     */
+    422: ApiError;
+};
+
+export type UpdateWeeklyHoursError = UpdateWeeklyHoursErrors[keyof UpdateWeeklyHoursErrors];
+
+export type UpdateWeeklyHoursResponses = {
+    /**
+     * The request has succeeded.
+     */
+    200: MeetingType;
+};
+
+export type UpdateWeeklyHoursResponse = UpdateWeeklyHoursResponses[keyof UpdateWeeklyHoursResponses];
 
 export type GetOwnerOperationData = {
     body?: never;

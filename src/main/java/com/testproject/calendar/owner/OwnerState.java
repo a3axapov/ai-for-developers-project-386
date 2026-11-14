@@ -19,6 +19,8 @@ import com.testproject.calendar.generated.model.MeetingType;
 import com.testproject.calendar.generated.model.CreateMeetingTypeCommand;
 import com.testproject.calendar.generated.model.UpdateMeetingTypeCommand;
 import com.testproject.calendar.generated.model.ArchiveMeetingTypeCommand;
+import com.testproject.calendar.generated.model.WeeklyHoursCommand;
+import com.testproject.calendar.generated.model.AffectedBooking;
 import com.testproject.calendar.generated.model.WorkingDay;
 import com.testproject.calendar.generated.model.WorkingInterval;
 import com.testproject.calendar.generated.model.PublicBookingPage;
@@ -331,7 +333,10 @@ public class OwnerState {
     }
 
     private void refreshBookings() {
-        var now = clock.instant();
+        refreshBookings(clock.instant());
+    }
+
+    private void refreshBookings(java.time.Instant now) {
         for (var booking : bookings.values()) {
             booking.setOwnerName(name);
             booking.setOwnerTimeZone(profile().getTimeZone());
@@ -494,6 +499,119 @@ public class OwnerState {
 
     private record MeetingTypeEdit(String id, UpdateMeetingTypeCommand command) { }
     private record MeetingTypeArchive(String id, ArchiveMeetingTypeCommand command) { }
+    private record WeeklyHoursEdit(String id, WeeklyHoursCommand command) { }
+    private record HoursImpact(String id, long version, List<WorkingDay> days, List<AffectedBooking> bookings) { }
+    private final Map<String, HoursImpact> hoursConfirmations = new HashMap<>();
+
+    public synchronized MeetingType updateWeeklyHours(String key, String id, WeeklyHoursCommand command) {
+        if (!validKey(key)) {
+            throw invalidKey();
+        }
+        var request = new WeeklyHoursEdit(id, command);
+        var saved = operations.get(key);
+        if (saved != null) {
+            if (!saved.request().equals(request)) {
+                throw new ApiFailure(409, new ApiError("IDEMPOTENCY_KEY_REUSED",
+                        "Этот ключ уже использован для другого запроса."));
+            }
+            if (saved.failure() != null) {
+                throw saved.failure();
+            }
+            return (MeetingType) saved.result();
+        }
+        try {
+            requireTypeVersionValue(command.getExpectedVersion());
+            var current = meetingType(id);
+            requireTypeVersion(current, command.getExpectedVersion());
+            var days = canonicalDays(command.getDays());
+            var result = new MeetingType(current.getId(), current.getTitle(), current.getDescription(),
+                    current.getDurationMinutes(), current.getRequiresApproval(), current.getTimeZone(),
+                    current.getVersion() + 1, false, days, current.getDateOverrides());
+            // Expiry, impact comparison, token verification and save share the owner-state monitor.
+            // Owner decision #27: only NEW invalidity for active bookings strictly in the future.
+            var now = clock.instant();
+            refreshBookings(now);
+            var affected = bookings.values().stream()
+                    .filter(booking -> booking.getMeetingTypeId().equals(id)
+                            && booking.getStartsAt().toInstant().isAfter(now)
+                            && (booking.getStatus() == BookingDetails.StatusEnum.PENDING
+                            || booking.getStatus() == BookingDetails.StatusEnum.CONFIRMED))
+                    .filter(booking -> fitsHours(current, booking) && !fitsHours(result, booking))
+                    .sorted(java.util.Comparator.comparing(booking -> booking.getStartsAt().toInstant()))
+                    .map(booking -> new AffectedBooking(booking.getId(), booking.getMeetingTypeId(),
+                            booking.getTitle(), booking.getGuestName(), booking.getStartsAt(), booking.getEndsAt(),
+                            AffectedBooking.StatusEnum.valueOf(booking.getStatus().name()), booking.getVersion()))
+                    .toList();
+            var impact = new HoursImpact(id, current.getVersion(), days, affected);
+            if ((!affected.isEmpty() || command.getConfirmationToken() != null)
+                    && !impact.equals(hoursConfirmations.get(command.getConfirmationToken()))) {
+                var token = randomToken();
+                hoursConfirmations.put(token, impact);
+                throw new ApiFailure(409, new ApiError("IMPACT_CONFIRMATION_REQUIRED",
+                        "Изменение закроет время показанных бронирований. Они не будут отменены или перенесены.")
+                        .affectedBookings(affected).confirmationToken(token));
+            }
+            meetingTypes.put(id, result);
+            operations.put(key, new SavedCommand(request, result, null));
+            return result;
+        } catch (ApiFailure failure) {
+            operations.put(key, new SavedCommand(request, null, failure));
+            throw failure;
+        }
+    }
+
+    private boolean fitsHours(MeetingType type, BookingDetails booking) {
+        return !availability.available(type, booking.getStartsAt().toInstant(), booking.getEndsAt().toInstant(),
+                booking.getDurationMinutes()).isEmpty();
+    }
+
+    private List<WorkingDay> canonicalDays(List<WorkingDay> days) {
+        var result = new ArrayList<WorkingDay>();
+        var seen = new java.util.HashSet<WorkingDay.DayEnum>();
+        if (days == null) {
+            throw invalidHours("days", "Укажите дни недели.");
+        }
+        for (int i = 0; i < days.size(); i++) {
+            var day = days.get(i);
+            if (day == null || day.getDay() == null || !seen.add(day.getDay()) || day.getIntervals() == null) {
+                throw invalidHours("days[" + i + "]", "Укажите уникальный день и его интервалы.");
+            }
+            for (int j = 0; j < day.getIntervals().size(); j++) {
+                var interval = day.getIntervals().get(j);
+                if (interval == null || !validTime(interval.getStart(), false)
+                        || !validTime(interval.getEnd(), true)
+                        || interval.getStart().compareTo(interval.getEnd()) >= 0) {
+                    throw invalidHours("days[" + i + "].intervals[" + j + "]",
+                            "Введите интервал ЧЧ:ММ от 00:00 до 24:00; начало раньше конца, 24:00 только конец.");
+                }
+            }
+        }
+        for (var day : WorkingDay.DayEnum.values()) {
+            var merged = new ArrayList<WorkingInterval>();
+            var intervals = days.stream().filter(value -> value.getDay() == day)
+                    .flatMap(value -> value.getIntervals().stream())
+                    .sorted(java.util.Comparator.comparing(WorkingInterval::getStart)).toList();
+            for (var interval : intervals) {
+                if (merged.isEmpty() || merged.getLast().getEnd().compareTo(interval.getStart()) < 0) {
+                    merged.add(new WorkingInterval(interval.getStart(), interval.getEnd()));
+                } else if (merged.getLast().getEnd().compareTo(interval.getEnd()) < 0) {
+                    merged.getLast().setEnd(interval.getEnd());
+                }
+            }
+            result.add(new WorkingDay(day, merged));
+        }
+        return result;
+    }
+
+    private boolean validTime(String value, boolean end) {
+        return value != null && (value.matches("(?:[01][0-9]|2[0-3]):[0-5][0-9]")
+                || end && value.equals("24:00"));
+    }
+
+    private ApiFailure invalidHours(String field, String message) {
+        return new ApiFailure(422, new ApiError("VALIDATION_FAILED", "Проверьте рабочие часы.")
+                .fieldErrors(List.of(new FieldError(field, "INVALID_VALUE", message))));
+    }
 
     public synchronized MeetingType archiveMeetingType(String key, String id, ArchiveMeetingTypeCommand command) {
         if (!validKey(key)) {
