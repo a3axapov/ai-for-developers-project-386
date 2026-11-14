@@ -39,7 +39,7 @@ for (const [command, expected, argument] of checks) {
   } else console.log(`OK ${command} ${expected}`);
 }
 if (!toolsOnly.length) {
-  for (const port of [4173, 4174]) {
+  for (const port of [4173, 4174, 4175, 4176]) {
     await new Promise((resolve) => {
       const server = createServer();
       server.once('error', (error) => {

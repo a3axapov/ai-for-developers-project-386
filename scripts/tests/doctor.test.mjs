@@ -51,7 +51,7 @@ test('doctor detects a genuinely occupied browser port and still launches real C
   const server = createServer();
   await new Promise((resolve, reject) => {
     server.once('error', reject);
-    server.listen(4173, '127.0.0.1', resolve);
+    server.listen(4175, '127.0.0.1', resolve);
   });
   try {
     const result = spawnSync(process.execPath, ['scripts/doctor.mjs'], {
@@ -59,7 +59,7 @@ test('doctor detects a genuinely occupied browser port and still launches real C
       timeout: 30_000,
     });
     assert.equal(result.status, 1, result.stderr);
-    assert.match(result.stderr, /FAIL port 4173: EADDRINUSE/);
+    assert.match(result.stderr, /FAIL port 4175: EADDRINUSE/);
     assert.match(result.stdout, /OK Chromium launched and rendered a page/);
   } finally {
     await new Promise((resolve) => server.close(resolve));

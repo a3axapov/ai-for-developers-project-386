@@ -3,8 +3,9 @@ import { once } from 'node:events';
 import { mkdtemp, writeFile, rename, rm } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { expect, test as base } from '@playwright/test';
+import { mutablePort, mutableURL } from '../browser-ports';
 
-// Each mutable scenario gets its own real application state; the read-only suite uses 4173.
+// Each mutable scenario gets its own real application state on its group's port.
 export const test = base.extend<{
   ownerUsername: string;
   serverArguments: string[];
@@ -60,7 +61,7 @@ export const test = base.extend<{
       spawn('java', [
         ...launcher,
         '--server.address=127.0.0.1',
-        '--server.port=4174',
+        `--server.port=${mutablePort}`,
         '--spring.config.additional-location=file:tests/fixtures/owner.yaml',
         `--calendar.initial.username=${ownerUsername}`,
         ...serverArguments,
@@ -83,9 +84,7 @@ export const test = base.extend<{
           async () => {
             if (server.exitCode !== null) throw new Error(output);
             try {
-              return (
-                await client.get('http://127.0.0.1:4174/api/health')
-              ).status();
+              return (await client.get(`${mutableURL}/api/health`)).status();
             } catch {
               return 0;
             }
@@ -110,7 +109,7 @@ export const test = base.extend<{
     };
     try {
       await ready();
-      await use('http://127.0.0.1:4174');
+      await use(mutableURL);
     } finally {
       await client.dispose();
       await stop();

@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import { readOnlyPort, readOnlyURL } from './browser-ports';
 
 export default defineConfig({
   testDir: './tests',
@@ -8,7 +9,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   reporter: 'list',
   use: {
-    baseURL: 'http://127.0.0.1:4173',
+    baseURL: readOnlyURL,
     trace: 'retain-on-failure',
   },
   projects: [
@@ -28,14 +29,13 @@ export default defineConfig({
     {
       name: 'configured-owner',
       testMatch: 'configured-owner.spec.ts',
-      use: { ...devices['Desktop Chrome'], baseURL: 'http://127.0.0.1:4174' },
+      use: { ...devices['Desktop Chrome'] },
     },
   ],
   webServer: [
     {
-      command:
-        'java -jar ../build/libs/calendar.jar --server.address=127.0.0.1 --server.port=4173',
-      url: 'http://127.0.0.1:4173/api/health',
+      command: `java -jar ../build/libs/calendar.jar --server.address=127.0.0.1 --server.port=${readOnlyPort}`,
+      url: `${readOnlyURL}/api/health`,
       reuseExistingServer: false,
       gracefulShutdown: { signal: 'SIGTERM', timeout: 10_000 },
     },

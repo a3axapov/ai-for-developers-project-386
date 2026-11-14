@@ -75,8 +75,16 @@ description = "Install Chromium and its system dependencies for Playwright"
 run = "npm exec --workspace frontend -- playwright install --with-deps chromium"
 
 [tasks."test:browser"]
-description = "Build the application and test navigation and owner profiles against real Spring Boot servers"
+description = "Run all real-server browser tests (parallel locally, sequential in CI)"
+run = 'if [ -n "${CI:-}" ]; then mise run test:browser:sequential; else mise run test:browser:parallel; fi'
+
+[tasks."test:browser:sequential"]
+description = "Build once and run all browser projects sequentially"
 run = "npm run test:e2e --workspace frontend"
+
+[tasks."test:browser:parallel"]
+description = "Build once and run desktop and mobile groups on isolated ports"
+run = "npm run test:e2e:parallel --workspace frontend --"
 
 [tasks."test:browser:targeted"]
 description = "Build the application and run selected Playwright tests (pass a file or --grep)"
