@@ -8,6 +8,7 @@ export type ApiError = {
     code: string;
     message: string;
     currentProfile?: OwnerProfile;
+    currentBooking?: BookingDetails;
     fieldErrors?: Array<FieldError>;
 };
 
@@ -19,6 +20,10 @@ export type BookingAttemptResult = {
     booking?: BookingDetails;
     resultUrl?: string;
     error?: ApiError;
+};
+
+export type BookingDecisionCommand = {
+    expectedVersion: number;
 };
 
 /**
@@ -116,12 +121,13 @@ export type OwnerBookingList = {
 };
 
 /**
- * The saved, definite result of an owner command. Exactly one of profile, meetingType or error is present.
+ * The saved, definite result of an owner command. Exactly one of profile, meetingType, booking or error is present. Booking is the snapshot at command completion, not a new decision.
  */
 export type OwnerOperationResult = {
     statusCode: number;
     profile?: OwnerProfile;
     meetingType?: MeetingType;
+    booking?: BookingDetails;
     error?: ApiError;
 };
 
@@ -443,6 +449,90 @@ export type GetOwnerBookingResponses = {
 };
 
 export type GetOwnerBookingResponse = GetOwnerBookingResponses[keyof GetOwnerBookingResponses];
+
+export type ConfirmOwnerBookingData = {
+    body: BookingDecisionCommand;
+    headers: {
+        'Idempotency-Key': IdempotencyKey;
+    };
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/owner/bookings/{id}/confirm';
+};
+
+export type ConfirmOwnerBookingErrors = {
+    /**
+     * The server could not understand the request due to invalid syntax.
+     */
+    400: ApiError;
+    /**
+     * The server cannot find the requested resource.
+     */
+    404: ApiError;
+    /**
+     * The request conflicts with the current state of the server.
+     */
+    409: ApiError;
+    /**
+     * Client error
+     */
+    422: ApiError;
+};
+
+export type ConfirmOwnerBookingError = ConfirmOwnerBookingErrors[keyof ConfirmOwnerBookingErrors];
+
+export type ConfirmOwnerBookingResponses = {
+    /**
+     * The request has succeeded.
+     */
+    200: BookingDetails;
+};
+
+export type ConfirmOwnerBookingResponse = ConfirmOwnerBookingResponses[keyof ConfirmOwnerBookingResponses];
+
+export type RejectOwnerBookingData = {
+    body: BookingDecisionCommand;
+    headers: {
+        'Idempotency-Key': IdempotencyKey;
+    };
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/owner/bookings/{id}/reject';
+};
+
+export type RejectOwnerBookingErrors = {
+    /**
+     * The server could not understand the request due to invalid syntax.
+     */
+    400: ApiError;
+    /**
+     * The server cannot find the requested resource.
+     */
+    404: ApiError;
+    /**
+     * The request conflicts with the current state of the server.
+     */
+    409: ApiError;
+    /**
+     * Client error
+     */
+    422: ApiError;
+};
+
+export type RejectOwnerBookingError = RejectOwnerBookingErrors[keyof RejectOwnerBookingErrors];
+
+export type RejectOwnerBookingResponses = {
+    /**
+     * The request has succeeded.
+     */
+    200: BookingDetails;
+};
+
+export type RejectOwnerBookingResponse = RejectOwnerBookingResponses[keyof RejectOwnerBookingResponses];
 
 export type GetOwnerCalendarData = {
     body?: never;

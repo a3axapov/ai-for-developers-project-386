@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import {
+  confirmOwnerBooking,
+  rejectOwnerBooking,
   getOwnerBooking,
+  getOwnerOperation,
   getOwnerCalendar,
   getOwnerProfile,
   listOwnerBookings,
@@ -34,7 +37,13 @@ function initialRange() {
   };
 }
 
-export function OwnerBookings() {
+export function OwnerBookings({
+  blocked,
+  onLockChange,
+}: {
+  blocked: boolean;
+  onLockChange: (locked: boolean) => void;
+}) {
   const [view, setView] = useState('upcoming');
   const [status, setStatus] = useState('');
   const [range, setRange] = useState(initialRange);
@@ -48,6 +57,118 @@ export function OwnerBookings() {
   const [details, setDetails] = useState<BookingDetails>();
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [commandError, setCommandError] = useState('');
+  const [pendingKey, setPendingKey] = useState<string>();
+  const [operationUnavailable, setOperationUnavailable] = useState(false);
+  const locked = saving || Boolean(pendingKey);
+
+  function unknownOutcome(key: string) {
+    setPendingKey(key);
+    setCommandError(
+      'Исход операции неизвестен. Выясните результат перед следующим изменением.',
+    );
+  }
+
+  function decisionFinished(error?: ApiError) {
+    setPendingKey(undefined);
+    setOperationUnavailable(false);
+    onLockChange(false);
+    setCommandError(error?.message ?? '');
+    // The saved operation is evidence of the command's outcome, not necessarily current details.
+    refresh();
+  }
+
+  async function recoverDecision() {
+    if (!pendingKey || saving) return;
+    setSaving(true);
+    try {
+      const result = await getOwnerOperation({
+        path: { key: pendingKey },
+        signal: AbortSignal.timeout(15_000),
+      });
+      if (result.data?.statusCode === 200 && result.data.booking)
+        decisionFinished();
+      else if (result.data?.error) decisionFinished(result.data.error);
+      else if (result.response?.status === 410) {
+        setOperationUnavailable(true);
+        setCommandError(
+          'Результат операции недоступен. Возможен сброс данных. Загрузите актуальные бронирования; решение не будет отправлено заново.',
+        );
+      } else unknownOutcome(pendingKey);
+    } catch {
+      unknownOutcome(pendingKey);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function reloadAfterUnavailable() {
+    if (!selectedId || saving) return;
+    setSaving(true);
+    try {
+      const result = await getOwnerBooking({
+        path: { id: selectedId },
+        signal: AbortSignal.timeout(15_000),
+      });
+      if (
+        result.data ||
+        (result.response?.status === 404 && result.error?.code)
+      ) {
+        decisionFinished(result.error);
+        if (!result.data) {
+          setDetails(undefined);
+          setDetailError(result.error!.message);
+        }
+      } else
+        setCommandError(
+          'Не удалось загрузить актуальное бронирование. Повторите чтение.',
+        );
+    } catch {
+      setCommandError(
+        'Не удалось загрузить актуальное бронирование. Повторите чтение.',
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function decideBooking(action: 'confirm' | 'reject') {
+    if (!details || locked || blocked || detailLoading || loading) return;
+    if (
+      action === 'reject' &&
+      !window.confirm(
+        'Отклонение освободит занятость этого запроса. Восстановить его невозможно. Это не гарантирует свободный слот: другие ограничения продолжают действовать. Отклонить запрос?',
+      )
+    )
+      return;
+    setSaving(true);
+    onLockChange(true);
+    setCommandError('');
+    const key = crypto.randomUUID();
+    try {
+      const result = await (
+        action === 'confirm' ? confirmOwnerBooking : rejectOwnerBooking
+      )({
+        path: { id: details.id },
+        headers: { 'Idempotency-Key': key },
+        body: { expectedVersion: details.version },
+        signal: AbortSignal.timeout(15_000),
+      });
+      if (result.data) decisionFinished();
+      else if (
+        result.response &&
+        [400, 404, 409, 422].includes(result.response.status) &&
+        result.error?.code
+      )
+        decisionFinished(result.error);
+      else unknownOutcome(key);
+    } catch {
+      unknownOutcome(key);
+    } finally {
+      setSaving(false);
+    }
+  }
 
   function beginListRead() {
     setLoading(true);
@@ -142,6 +263,7 @@ export function OwnerBookings() {
       <label>
         Представление бронирований
         <select
+          disabled={locked}
           value={view}
           onChange={(event) => {
             if (event.target.value === view) return;
@@ -158,6 +280,7 @@ export function OwnerBookings() {
         <label>
           Статус бронирований
           <select
+            disabled={locked}
             value={status}
             onChange={(event) => {
               if (event.target.value === status) return;
@@ -195,6 +318,7 @@ export function OwnerBookings() {
             <label key={field}>
               {field === 'from' ? 'Начало диапазона' : 'Конец диапазона'}
               <input
+                disabled={locked}
                 value={rangeDraft[field]}
                 aria-describedby={`calendar-range-help${error?.fieldErrors?.some((item) => item.field === field) ? ` calendar-${field}-error` : ''}`}
                 aria-invalid={
@@ -214,20 +338,43 @@ export function OwnerBookings() {
                 ))}
             </label>
           ))}
-          <button className="button" disabled={loading}>
+          <button className="button" disabled={loading || locked}>
             Показать диапазон
           </button>
         </form>
       )}
       <button
         className="button"
-        disabled={loading || detailLoading}
+        disabled={loading || detailLoading || locked}
         onClick={refresh}
       >
         Обновить бронирования
       </button>
       {loading && <p role="status">Загрузка бронирований…</p>}
       {error && <p role="alert">{error.message}</p>}
+      {saving && <p role="status">Обработка решения…</p>}
+      {commandError && <p role="alert">{commandError}</p>}
+      {pendingKey && (
+        <>
+          <p>
+            Показано последнее подтверждённое состояние. Новые решения
+            заблокированы.
+          </p>
+          <button
+            className="button"
+            disabled={saving}
+            onClick={() =>
+              void (operationUnavailable
+                ? reloadAfterUnavailable()
+                : recoverDecision())
+            }
+          >
+            {operationUnavailable
+              ? 'Загрузить актуальные бронирования'
+              : 'Выяснить результат решения'}
+          </button>
+        </>
+      )}
       {!loading && !error && items.length === 0 && (
         <p>В выбранном представлении нет бронирований.</p>
       )}
@@ -239,6 +386,7 @@ export function OwnerBookings() {
             <p>{statusLabels[booking.status]}</p>
             <button
               className="button"
+              disabled={locked}
               onClick={() => {
                 beginDetailRead();
                 setSelectedId(booking.id);
@@ -275,6 +423,24 @@ export function OwnerBookings() {
               <p>{details.guestEmail}</p>
               <p className="meeting-description">{details.comment}</p>
               <p>Версия: {details.version}</p>
+              {details.status === 'PENDING' && (
+                <>
+                  <button
+                    className="button"
+                    disabled={locked || blocked || detailLoading || loading}
+                    onClick={() => void decideBooking('confirm')}
+                  >
+                    Подтвердить запрос
+                  </button>
+                  <button
+                    className="button"
+                    disabled={locked || blocked || detailLoading || loading}
+                    onClick={() => void decideBooking('reject')}
+                  >
+                    Отклонить запрос
+                  </button>
+                </>
+              )}
             </>
           )}
         </section>

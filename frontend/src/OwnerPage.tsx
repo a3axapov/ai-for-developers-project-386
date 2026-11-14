@@ -20,6 +20,7 @@ export function OwnerPage() {
   const [attempt, setAttempt] = useState(0);
   const [saving, setSaving] = useState(false);
   const [meetingBlocked, setMeetingBlocked] = useState(false);
+  const [bookingBlocked, setBookingBlocked] = useState(false);
   const [commandError, setCommandError] = useState<string>();
   const [copyMessage, setCopyMessage] = useState<string>();
   const [pendingKey, setPendingKey] = useState<string>();
@@ -32,7 +33,13 @@ export function OwnerPage() {
   const draftInitialized = useRef(false);
 
   async function saveProfile() {
-    if (state.status !== 'ready' || saving || pendingKey || meetingBlocked)
+    if (
+      state.status !== 'ready' ||
+      saving ||
+      pendingKey ||
+      meetingBlocked ||
+      bookingBlocked
+    )
       return;
     const username = draft.username
       .replace(/^\p{Zs}+|\p{Zs}+$/gu, '')
@@ -136,7 +143,13 @@ export function OwnerPage() {
   }
 
   async function toggleBooking() {
-    if (state.status !== 'ready' || saving || pendingKey || meetingBlocked)
+    if (
+      state.status !== 'ready' ||
+      saving ||
+      pendingKey ||
+      meetingBlocked ||
+      bookingBlocked
+    )
       return;
     setSaving(true);
     setProfileOperation(false);
@@ -235,7 +248,12 @@ export function OwnerPage() {
               rows={1}
               id="owner-name"
               value={draft.name}
-              disabled={saving || Boolean(pendingKey) || meetingBlocked}
+              disabled={
+                saving ||
+                Boolean(pendingKey) ||
+                meetingBlocked ||
+                bookingBlocked
+              }
               aria-invalid={
                 fieldErrors?.some((error) => error.field === 'name') ||
                 undefined
@@ -261,7 +279,12 @@ export function OwnerPage() {
               rows={1}
               id="owner-username"
               value={draft.username}
-              disabled={saving || Boolean(pendingKey) || meetingBlocked}
+              disabled={
+                saving ||
+                Boolean(pendingKey) ||
+                meetingBlocked ||
+                bookingBlocked
+              }
               aria-invalid={
                 fieldErrors?.some((error) => error.field === 'username') ||
                 undefined
@@ -284,7 +307,12 @@ export function OwnerPage() {
               ))}
             <button
               className="button"
-              disabled={saving || Boolean(pendingKey) || meetingBlocked}
+              disabled={
+                saving ||
+                Boolean(pendingKey) ||
+                meetingBlocked ||
+                bookingBlocked
+              }
             >
               Сохранить профиль
             </button>
@@ -299,7 +327,12 @@ export function OwnerPage() {
               type="checkbox"
               role="switch"
               checked={state.profile.bookingEnabled}
-              disabled={saving || Boolean(pendingKey) || meetingBlocked}
+              disabled={
+                saving ||
+                Boolean(pendingKey) ||
+                meetingBlocked ||
+                bookingBlocked
+              }
               onChange={() => {
                 void toggleBooking();
               }}
@@ -359,7 +392,7 @@ export function OwnerPage() {
           {copyMessage && <p role="status">{copyMessage}</p>}
           <MeetingTypes
             bookingUrl={state.profile.bookingUrl}
-            blocked={saving || Boolean(pendingKey)}
+            blocked={saving || Boolean(pendingKey) || bookingBlocked}
             draft={meetingDraft}
             onDraftChange={setMeetingDraft}
             onLockChange={setMeetingBlocked}
@@ -367,7 +400,10 @@ export function OwnerPage() {
               setState({ status: 'ready', profile })
             }
           />
-          <OwnerBookings />
+          <OwnerBookings
+            blocked={saving || Boolean(pendingKey) || meetingBlocked}
+            onLockChange={setBookingBlocked}
+          />
         </>
       )}
       <a className="button" href="/">

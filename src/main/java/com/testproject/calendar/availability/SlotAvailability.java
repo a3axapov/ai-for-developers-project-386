@@ -33,6 +33,10 @@ public class SlotAvailability {
     }
 
     public List<Slot> available(MeetingType type, Instant start, Instant end) {
+        return available(type, start, end, type.getDurationMinutes());
+    }
+
+    public List<Slot> available(MeetingType type, Instant start, Instant end, int durationMinutes) {
         var zone = ZoneId.of(type.getTimeZone());
         var first = start.atZone(zone).toLocalDate();
         var last = end.atZone(zone).toLocalDate();
@@ -64,7 +68,7 @@ public class SlotAvailability {
                 var local = date.atStartOfDay().plusMinutes(minute);
                 for (var offset : zone.getRules().getValidOffsets(local)) {
                     var candidate = local.toInstant(offset);
-                    var finish = candidate.plusSeconds(type.getDurationMinutes() * 60L);
+                    var finish = candidate.plusSeconds(durationMinutes * 60L);
                     if (!candidate.isBefore(start) && !finish.isAfter(end)
                             && continuous.stream().anyMatch(range -> !candidate.isBefore(range.start())
                             && !finish.isAfter(range.end()))) {

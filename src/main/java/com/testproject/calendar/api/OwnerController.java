@@ -10,6 +10,7 @@ import com.testproject.calendar.generated.model.MeetingType;
 import com.testproject.calendar.generated.model.MeetingTypeList;
 import com.testproject.calendar.generated.model.OwnerBookingList;
 import com.testproject.calendar.generated.model.BookingDetails;
+import com.testproject.calendar.generated.model.BookingDecisionCommand;
 import com.testproject.calendar.owner.OwnerState;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
@@ -28,6 +29,20 @@ public class OwnerController implements OwnerApi {
     public ResponseEntity<OwnerBookingList> listOwnerBookings(String view, String status) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())
                 .body(new OwnerBookingList(owner.ownerBookings(view, status)));
+    }
+
+    @Override
+    public ResponseEntity<BookingDetails> confirmOwnerBooking(
+            String id, String idempotencyKey, BookingDecisionCommand command) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(owner.decideBooking(idempotencyKey, id, "confirm", command));
+    }
+
+    @Override
+    public ResponseEntity<BookingDetails> rejectOwnerBooking(
+            String id, String idempotencyKey, BookingDecisionCommand command) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(owner.decideBooking(idempotencyKey, id, "reject", command));
     }
 
     @Override

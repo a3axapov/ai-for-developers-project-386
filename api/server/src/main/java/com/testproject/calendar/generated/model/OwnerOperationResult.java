@@ -5,6 +5,7 @@ import java.util.Objects;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.testproject.calendar.generated.model.ApiError;
+import com.testproject.calendar.generated.model.BookingDetails;
 import com.testproject.calendar.generated.model.MeetingType;
 import com.testproject.calendar.generated.model.OwnerProfile;
 import org.springframework.lang.Nullable;
@@ -15,7 +16,7 @@ import java.util.*;
 import jakarta.annotation.Generated;
 
 /**
- * The saved, definite result of an owner command. Exactly one of profile, meetingType or error is present.
+ * The saved, definite result of an owner command. Exactly one of profile, meetingType, booking or error is present. Booking is the snapshot at command completion, not a new decision.
  */
 
 @Generated(value = "org.openapitools.codegen.languages.SpringCodegen", comments = "Generator version: 7.27.0")
@@ -26,6 +27,8 @@ public class OwnerOperationResult {
   private @Nullable OwnerProfile profile;
 
   private @Nullable MeetingType meetingType;
+
+  private @Nullable BookingDetails booking;
 
   private @Nullable ApiError error;
 
@@ -97,6 +100,25 @@ public class OwnerOperationResult {
     this.meetingType = meetingType;
   }
 
+  public OwnerOperationResult booking(@Nullable BookingDetails booking) {
+    this.booking = booking;
+    return this;
+  }
+
+  /**
+   * Get booking
+   * @return booking
+   */
+  @JsonProperty("booking")
+  public @Nullable BookingDetails getBooking() {
+    return booking;
+  }
+
+  @JsonProperty("booking")
+  public void setBooking(@Nullable BookingDetails booking) {
+    this.booking = booking;
+  }
+
   public OwnerOperationResult error(@Nullable ApiError error) {
     this.error = error;
     return this;
@@ -128,12 +150,13 @@ public class OwnerOperationResult {
     return Objects.equals(this.statusCode, ownerOperationResult.statusCode) &&
         Objects.equals(this.profile, ownerOperationResult.profile) &&
         Objects.equals(this.meetingType, ownerOperationResult.meetingType) &&
+        Objects.equals(this.booking, ownerOperationResult.booking) &&
         Objects.equals(this.error, ownerOperationResult.error);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(statusCode, profile, meetingType, error);
+    return Objects.hash(statusCode, profile, meetingType, booking, error);
   }
 
   @Override
@@ -143,6 +166,7 @@ public class OwnerOperationResult {
     sb.append("    statusCode: ").append(toIndentedString(statusCode)).append("\n");
     sb.append("    profile: ").append(toIndentedString(profile)).append("\n");
     sb.append("    meetingType: ").append(toIndentedString(meetingType)).append("\n");
+    sb.append("    booking: ").append(toIndentedString(booking)).append("\n");
     sb.append("    error: ").append(toIndentedString(error)).append("\n");
     sb.append("}");
     return sb.toString();

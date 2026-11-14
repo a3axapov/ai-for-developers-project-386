@@ -4,6 +4,7 @@ import java.net.URI;
 import java.util.Objects;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.testproject.calendar.generated.model.BookingDetails;
 import com.testproject.calendar.generated.model.FieldError;
 import com.testproject.calendar.generated.model.OwnerProfile;
 import java.util.ArrayList;
@@ -28,6 +29,8 @@ public class ApiError {
   private String message;
 
   private @Nullable OwnerProfile currentProfile;
+
+  private @Nullable BookingDetails currentBooking;
 
   private @Nullable List<FieldError> fieldErrors;
 
@@ -100,6 +103,25 @@ public class ApiError {
     this.currentProfile = currentProfile;
   }
 
+  public ApiError currentBooking(@Nullable BookingDetails currentBooking) {
+    this.currentBooking = currentBooking;
+    return this;
+  }
+
+  /**
+   * Get currentBooking
+   * @return currentBooking
+   */
+  @JsonProperty("currentBooking")
+  public @Nullable BookingDetails getCurrentBooking() {
+    return currentBooking;
+  }
+
+  @JsonProperty("currentBooking")
+  public void setCurrentBooking(@Nullable BookingDetails currentBooking) {
+    this.currentBooking = currentBooking;
+  }
+
   public ApiError fieldErrors(@Nullable List<FieldError> fieldErrors) {
     this.fieldErrors = fieldErrors;
     return this;
@@ -139,12 +161,13 @@ public class ApiError {
     return Objects.equals(this.code, apiError.code) &&
         Objects.equals(this.message, apiError.message) &&
         Objects.equals(this.currentProfile, apiError.currentProfile) &&
+        Objects.equals(this.currentBooking, apiError.currentBooking) &&
         Objects.equals(this.fieldErrors, apiError.fieldErrors);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(code, message, currentProfile, fieldErrors);
+    return Objects.hash(code, message, currentProfile, currentBooking, fieldErrors);
   }
 
   @Override
@@ -154,6 +177,7 @@ public class ApiError {
     sb.append("    code: ").append(toIndentedString(code)).append("\n");
     sb.append("    message: ").append(toIndentedString(message)).append("\n");
     sb.append("    currentProfile: ").append(toIndentedString(currentProfile)).append("\n");
+    sb.append("    currentBooking: ").append(toIndentedString(currentBooking)).append("\n");
     sb.append("    fieldErrors: ").append(toIndentedString(fieldErrors)).append("\n");
     sb.append("}");
     return sb.toString();

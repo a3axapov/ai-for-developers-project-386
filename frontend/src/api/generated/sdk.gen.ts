@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { CreateMeetingTypeData, CreateMeetingTypeErrors, CreateMeetingTypeResponses, GetBookingAttemptData, GetBookingAttemptErrors, GetBookingAttemptResponses, GetBookingEntryData, GetBookingEntryResponses, GetBookingResultData, GetBookingResultErrors, GetBookingResultResponses, GetHealthData, GetHealthResponses, GetMeetingTypeData, GetMeetingTypeErrors, GetMeetingTypeResponses, GetOwnerBookingData, GetOwnerBookingErrors, GetOwnerBookingResponses, GetOwnerCalendarData, GetOwnerCalendarErrors, GetOwnerCalendarResponses, GetOwnerOperationData, GetOwnerOperationErrors, GetOwnerOperationResponses, GetOwnerProfileData, GetOwnerProfileResponses, GetPublicBookingPageData, GetPublicBookingPageErrors, GetPublicBookingPageResponses, GetPublicMeetingTypeData, GetPublicMeetingTypeErrors, GetPublicMeetingTypeResponses, GetPublicSlotsData, GetPublicSlotsErrors, GetPublicSlotsResponses, ListMeetingTypesData, ListMeetingTypesResponses, ListOwnerBookingsData, ListOwnerBookingsErrors, ListOwnerBookingsResponses, PrepareBookingAttemptData, PrepareBookingAttemptErrors, PrepareBookingAttemptResponses, SetPublicBookingData, SetPublicBookingErrors, SetPublicBookingResponses, SubmitBookingAttemptData, SubmitBookingAttemptErrors, SubmitBookingAttemptResponses, UpdateOwnerProfileData, UpdateOwnerProfileErrors, UpdateOwnerProfileResponses } from './types.gen';
+import type { ConfirmOwnerBookingData, ConfirmOwnerBookingErrors, ConfirmOwnerBookingResponses, CreateMeetingTypeData, CreateMeetingTypeErrors, CreateMeetingTypeResponses, GetBookingAttemptData, GetBookingAttemptErrors, GetBookingAttemptResponses, GetBookingEntryData, GetBookingEntryResponses, GetBookingResultData, GetBookingResultErrors, GetBookingResultResponses, GetHealthData, GetHealthResponses, GetMeetingTypeData, GetMeetingTypeErrors, GetMeetingTypeResponses, GetOwnerBookingData, GetOwnerBookingErrors, GetOwnerBookingResponses, GetOwnerCalendarData, GetOwnerCalendarErrors, GetOwnerCalendarResponses, GetOwnerOperationData, GetOwnerOperationErrors, GetOwnerOperationResponses, GetOwnerProfileData, GetOwnerProfileResponses, GetPublicBookingPageData, GetPublicBookingPageErrors, GetPublicBookingPageResponses, GetPublicMeetingTypeData, GetPublicMeetingTypeErrors, GetPublicMeetingTypeResponses, GetPublicSlotsData, GetPublicSlotsErrors, GetPublicSlotsResponses, ListMeetingTypesData, ListMeetingTypesResponses, ListOwnerBookingsData, ListOwnerBookingsErrors, ListOwnerBookingsResponses, PrepareBookingAttemptData, PrepareBookingAttemptErrors, PrepareBookingAttemptResponses, RejectOwnerBookingData, RejectOwnerBookingErrors, RejectOwnerBookingResponses, SetPublicBookingData, SetPublicBookingErrors, SetPublicBookingResponses, SubmitBookingAttemptData, SubmitBookingAttemptErrors, SubmitBookingAttemptResponses, UpdateOwnerProfileData, UpdateOwnerProfileErrors, UpdateOwnerProfileResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -47,6 +47,30 @@ export const listOwnerBookings = <ThrowOnError extends boolean = false>(options:
  * Current owner-only details by booking ID, without result tokens. Reading refreshes approval expiry.
  */
 export const getOwnerBooking = <ThrowOnError extends boolean = false>(options: Options<GetOwnerBookingData, ThrowOnError>): RequestResult<GetOwnerBookingResponses, GetOwnerBookingErrors, ThrowOnError> => (options.client ?? client).get<GetOwnerBookingResponses, GetOwnerBookingErrors, ThrowOnError>({ url: '/api/owner/bookings/{id}', ...options });
+
+/**
+ * Confirm a PENDING booking strictly before start under current availability, excluding its own occupancy. Does not use the guest window or public switch. Preserves saved conditions. Uses the shared owner operation key space.
+ */
+export const confirmOwnerBooking = <ThrowOnError extends boolean = false>(options: Options<ConfirmOwnerBookingData, ThrowOnError>): RequestResult<ConfirmOwnerBookingResponses, ConfirmOwnerBookingErrors, ThrowOnError> => (options.client ?? client).post<ConfirmOwnerBookingResponses, ConfirmOwnerBookingErrors, ThrowOnError>({
+    url: '/api/owner/bookings/{id}/confirm',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Reject a PENDING booking strictly before start. The UI must explicitly confirm that its occupancy is released and the decision cannot be undone; no textual reason is required. A free slot is not guaranteed.
+ */
+export const rejectOwnerBooking = <ThrowOnError extends boolean = false>(options: Options<RejectOwnerBookingData, ThrowOnError>): RequestResult<RejectOwnerBookingResponses, RejectOwnerBookingErrors, ThrowOnError> => (options.client ?? client).post<RejectOwnerBookingResponses, RejectOwnerBookingErrors, ThrowOnError>({
+    url: '/api/owner/bookings/{id}/reject',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
 
 /**
  * Existing bookings overlapping the actual half-open range [from, to), ordered by start. Includes historical and terminal bookings; no separate event copies. From must precede to (422); missing/malformed moments give 400. Manual blocks are not yet implemented.

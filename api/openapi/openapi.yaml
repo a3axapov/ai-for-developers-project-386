@@ -238,6 +238,128 @@ paths:
                 $ref: '#/components/schemas/ApiError'
       tags:
         - Owner
+  /api/owner/bookings/{id}/confirm:
+    post:
+      operationId: confirmOwnerBooking
+      description: Confirm a PENDING booking strictly before start under current availability, excluding its own occupancy. Does not use the guest window or public switch. Preserves saved conditions. Uses the shared owner operation key space.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/IdempotencyKey'
+      responses:
+        '200':
+          description: The request has succeeded.
+          headers:
+            Cache-Control:
+              required: true
+              schema:
+                type: string
+                enum:
+                  - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingDetails'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: The request conflicts with the current state of the server.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      tags:
+        - Owner
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingDecisionCommand'
+  /api/owner/bookings/{id}/reject:
+    post:
+      operationId: rejectOwnerBooking
+      description: Reject a PENDING booking strictly before start. The UI must explicitly confirm that its occupancy is released and the decision cannot be undone; no textual reason is required. A free slot is not guaranteed.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/IdempotencyKey'
+      responses:
+        '200':
+          description: The request has succeeded.
+          headers:
+            Cache-Control:
+              required: true
+              schema:
+                type: string
+                enum:
+                  - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingDetails'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: The request conflicts with the current state of the server.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      tags:
+        - Owner
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingDecisionCommand'
   /api/owner/calendar:
     get:
       operationId: getOwnerCalendar
@@ -739,6 +861,8 @@ components:
           type: string
         currentProfile:
           $ref: '#/components/schemas/OwnerProfile'
+        currentBooking:
+          $ref: '#/components/schemas/BookingDetails'
         fieldErrors:
           type: array
           items:
@@ -761,6 +885,15 @@ components:
         error:
           $ref: '#/components/schemas/ApiError'
       description: Read-only saved attempt outcome. PREPARED has no booking; SUCCEEDED includes booking and resultUrl; FAILED includes the saved definite error.
+    BookingDecisionCommand:
+      type: object
+      required:
+        - expectedVersion
+      properties:
+        expectedVersion:
+          type: integer
+          format: int64
+          minimum: 1
     BookingDetails:
       type: object
       required:
@@ -972,9 +1105,11 @@ components:
           $ref: '#/components/schemas/OwnerProfile'
         meetingType:
           $ref: '#/components/schemas/MeetingType'
+        booking:
+          $ref: '#/components/schemas/BookingDetails'
         error:
           $ref: '#/components/schemas/ApiError'
-      description: The saved, definite result of an owner command. Exactly one of profile, meetingType or error is present.
+      description: The saved, definite result of an owner command. Exactly one of profile, meetingType, booking or error is present. Booking is the snapshot at command completion, not a new decision.
     OwnerProfile:
       type: object
       required:

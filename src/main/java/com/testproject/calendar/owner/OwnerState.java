@@ -5,6 +5,7 @@ import com.testproject.calendar.generated.model.PrepareBookingAttemptCommand;
 import com.testproject.calendar.generated.model.PreparedBookingAttempt;
 import com.testproject.calendar.generated.model.BookingAttemptResult;
 import com.testproject.calendar.generated.model.BookingDetails;
+import com.testproject.calendar.generated.model.BookingDecisionCommand;
 import com.testproject.calendar.generated.model.SubmittedBookingAttempt;
 import com.testproject.calendar.availability.SlotAvailability;
 import com.testproject.calendar.generated.model.PublicSlots;
@@ -195,6 +196,72 @@ public class OwnerState {
         return bookingSnapshot(booking);
     }
 
+    private record BookingDecision(String id, String action, Long expectedVersion) { }
+
+    public synchronized BookingDetails decideBooking(String key, String id, String action,
+            BookingDecisionCommand command) {
+        if (!validKey(key)) {
+            throw invalidKey();
+        }
+        var request = new BookingDecision(id, action, command.getExpectedVersion());
+        var saved = operations.get(key);
+        if (saved != null) {
+            if (!saved.request().equals(request)) {
+                throw new ApiFailure(409, new ApiError("IDEMPOTENCY_KEY_REUSED",
+                        "Этот ключ уже использован для другого запроса."));
+            }
+            if (saved.failure() != null) {
+                throw saved.failure();
+            }
+            return bookingSnapshot((BookingDetails) saved.result());
+        }
+        try {
+            if (command.getExpectedVersion() == null || command.getExpectedVersion() < 1) {
+                throw new ApiFailure(422, new ApiError("VALIDATION_FAILED", "Проверьте данные запроса.")
+                        .fieldErrors(List.of(new FieldError("expectedVersion", "INVALID_VALUE",
+                                "Укажите целую версию не меньше 1."))));
+            }
+            var current = ownerBooking(id);
+            requirePendingVersion(current, command.getExpectedVersion());
+            if (action.equals("confirm")) {
+                var type = meetingType(current.getMeetingTypeId());
+                var start = current.getStartsAt().toInstant();
+                var end = current.getEndsAt().toInstant();
+                if (availability.available(type, start, end, current.getDurationMinutes()).isEmpty()) {
+                    throw new ApiFailure(409, new ApiError("SLOT_UNAVAILABLE",
+                            "Время не соответствует текущей доступности."));
+                }
+                if (occupied(start, end, id)) {
+                    throw new ApiFailure(409, new ApiError("TIME_CONFLICT", "Время уже занято."));
+                }
+            }
+            // Re-read time immediately before committing, still under the same state lock.
+            requirePendingVersion(ownerBooking(id), command.getExpectedVersion());
+            var booking = bookings.get(id);
+            booking.setStatus(action.equals("confirm")
+                    ? BookingDetails.StatusEnum.CONFIRMED : BookingDetails.StatusEnum.REJECTED);
+            booking.setVersion(booking.getVersion() + 1);
+            var result = bookingSnapshot(booking);
+            operations.put(key, new SavedCommand(request, result, null));
+            return result;
+        } catch (ApiFailure failure) {
+            operations.put(key, new SavedCommand(request, null, failure));
+            throw failure;
+        }
+    }
+
+    private void requirePendingVersion(BookingDetails booking, long expectedVersion) {
+        if (booking.getVersion() != expectedVersion) {
+            throw new ApiFailure(409, new ApiError("RESOURCE_CHANGED",
+                    "Бронирование изменилось. Проверьте актуальные данные.").currentBooking(booking));
+        }
+        // ownerBooking refreshes expiry using one clock reading under this same lock.
+        if (booking.getStatus() != BookingDetails.StatusEnum.PENDING) {
+            throw new ApiFailure(409, new ApiError("ACTION_NOT_ALLOWED",
+                    "Действие недоступно для текущего статуса или времени.").currentBooking(booking));
+        }
+    }
+
     public synchronized List<BookingDetails> ownerCalendar(java.time.OffsetDateTime from, java.time.OffsetDateTime to) {
         if (!from.toInstant().isBefore(to.toInstant())) {
             throw new ApiFailure(422, new ApiError("VALIDATION_FAILED", "Начало диапазона должно быть раньше конца.")
@@ -244,9 +311,13 @@ public class OwnerState {
     }
 
     private boolean occupied(java.time.Instant start, java.time.Instant end) {
+        return occupied(start, end, null);
+    }
+
+    private boolean occupied(java.time.Instant start, java.time.Instant end, String excludedId) {
         refreshBookings();
         return bookings.values().stream().anyMatch(booking ->
-                (booking.getStatus() == BookingDetails.StatusEnum.PENDING
+                !booking.getId().equals(excludedId) && (booking.getStatus() == BookingDetails.StatusEnum.PENDING
                 || booking.getStatus() == BookingDetails.StatusEnum.CONFIRMED)
                 && start.isBefore(booking.getEndsAt().toInstant()) && booking.getStartsAt().toInstant().isBefore(end));
     }
@@ -637,6 +708,9 @@ public class OwnerState {
         }
         if (saved.result() instanceof MeetingType type) {
             return new OwnerOperationResult(201).meetingType(type);
+        }
+        if (saved.result() instanceof BookingDetails booking) {
+            return new OwnerOperationResult(200).booking(bookingSnapshot(booking));
         }
         return new OwnerOperationResult(200).profile(saved.profile());
     }

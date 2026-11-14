@@ -6,6 +6,7 @@
 package com.testproject.calendar.generated.api;
 
 import com.testproject.calendar.generated.model.ApiError;
+import com.testproject.calendar.generated.model.BookingDecisionCommand;
 import com.testproject.calendar.generated.model.BookingDetails;
 import com.testproject.calendar.generated.model.CreateMeetingTypeCommand;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -32,6 +33,33 @@ import jakarta.annotation.Generated;
 
 @RequestMapping("${openapi.calendar.base-path:}")
 public interface OwnerApi {
+
+    String PATH_CONFIRM_OWNER_BOOKING = "/api/owner/bookings/{id}/confirm";
+    /**
+     * POST /api/owner/bookings/{id}/confirm
+     * Confirm a PENDING booking strictly before start under current availability, excluding its own occupancy. Does not use the guest window or public switch. Preserves saved conditions. Uses the shared owner operation key space.
+     *
+     * @param id  (required)
+     * @param idempotencyKey  (required)
+     * @param bookingDecisionCommand  (required)
+     * @return The request has succeeded. (status code 200)
+     *         or The server could not understand the request due to invalid syntax. (status code 400)
+     *         or The server cannot find the requested resource. (status code 404)
+     *         or The request conflicts with the current state of the server. (status code 409)
+     *         or Client error (status code 422)
+     */
+    @RequestMapping(
+        method = RequestMethod.POST,
+        value = OwnerApi.PATH_CONFIRM_OWNER_BOOKING,
+        produces = { "application/json" },
+        consumes = { "application/json" }
+    )
+    ResponseEntity<BookingDetails> confirmOwnerBooking(
+         @PathVariable("id") String id,
+         @RequestHeader(value = "Idempotency-Key", required = true) String idempotencyKey,
+         @RequestBody BookingDecisionCommand bookingDecisionCommand
+    );
+
 
     String PATH_CREATE_MEETING_TYPE = "/api/owner/meeting-types";
     /**
@@ -186,6 +214,33 @@ public interface OwnerApi {
     ResponseEntity<OwnerBookingList> listOwnerBookings(
          @RequestParam(value = "view", required = true) String view,
          @RequestParam(value = "status", required = false) @Nullable String status
+    );
+
+
+    String PATH_REJECT_OWNER_BOOKING = "/api/owner/bookings/{id}/reject";
+    /**
+     * POST /api/owner/bookings/{id}/reject
+     * Reject a PENDING booking strictly before start. The UI must explicitly confirm that its occupancy is released and the decision cannot be undone; no textual reason is required. A free slot is not guaranteed.
+     *
+     * @param id  (required)
+     * @param idempotencyKey  (required)
+     * @param bookingDecisionCommand  (required)
+     * @return The request has succeeded. (status code 200)
+     *         or The server could not understand the request due to invalid syntax. (status code 400)
+     *         or The server cannot find the requested resource. (status code 404)
+     *         or The request conflicts with the current state of the server. (status code 409)
+     *         or Client error (status code 422)
+     */
+    @RequestMapping(
+        method = RequestMethod.POST,
+        value = OwnerApi.PATH_REJECT_OWNER_BOOKING,
+        produces = { "application/json" },
+        consumes = { "application/json" }
+    )
+    ResponseEntity<BookingDetails> rejectOwnerBooking(
+         @PathVariable("id") String id,
+         @RequestHeader(value = "Idempotency-Key", required = true) String idempotencyKey,
+         @RequestBody BookingDecisionCommand bookingDecisionCommand
     );
 
 

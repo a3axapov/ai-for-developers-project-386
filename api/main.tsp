@@ -143,6 +143,7 @@ model ApiError {
   code: string;
   message: string;
   currentProfile?: OwnerProfile;
+  currentBooking?: BookingDetails;
   fieldErrors?: FieldError[];
 }
 
@@ -340,6 +341,48 @@ model OwnerBookingList {
   items: BookingDetails[];
 }
 
+model BookingDecisionCommand {
+  @minValue(1) expectedVersion: int64;
+}
+
+@post
+@route("/owner/bookings/{id}/reject")
+@tag("Owner")
+@operationId("rejectOwnerBooking")
+@doc("Reject a PENDING booking strictly before start. The UI must explicitly confirm that its occupancy is released and the decision cannot be undone; no textual reason is required. A free slot is not guaranteed.")
+op rejectOwnerBooking(
+  @path id: string,
+  @header("Idempotency-Key") idempotencyKey: IdempotencyKey,
+  @body command: BookingDecisionCommand,
+):
+  | {
+      @header("Cache-Control") cacheControl: "no-store";
+      @body body: BookingDetails;
+    }
+  | PageNotFound
+  | StateConflict
+  | InvalidData
+  | MalformedRequest;
+
+@post
+@route("/owner/bookings/{id}/confirm")
+@tag("Owner")
+@operationId("confirmOwnerBooking")
+@doc("Confirm a PENDING booking strictly before start under current availability, excluding its own occupancy. Does not use the guest window or public switch. Preserves saved conditions. Uses the shared owner operation key space.")
+op confirmOwnerBooking(
+  @path id: string,
+  @header("Idempotency-Key") idempotencyKey: IdempotencyKey,
+  @body command: BookingDecisionCommand,
+):
+  | {
+      @header("Cache-Control") cacheControl: "no-store";
+      @body body: BookingDetails;
+    }
+  | PageNotFound
+  | StateConflict
+  | InvalidData
+  | MalformedRequest;
+
 @get
 @route("/owner/calendar")
 @tag("Owner")
@@ -504,11 +547,12 @@ op setPublicBooking(
   | InvalidData
   | MalformedRequest;
 
-@doc("The saved, definite result of an owner command. Exactly one of profile, meetingType or error is present.")
+@doc("The saved, definite result of an owner command. Exactly one of profile, meetingType, booking or error is present. Booking is the snapshot at command completion, not a new decision.")
 model OwnerOperationResult {
   statusCode: int32;
   profile?: OwnerProfile;
   meetingType?: MeetingType;
+  booking?: BookingDetails;
   error?: ApiError;
 }
 
