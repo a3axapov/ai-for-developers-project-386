@@ -8,6 +8,8 @@ import com.testproject.calendar.generated.model.ProfileCommand;
 import com.testproject.calendar.generated.model.CreateMeetingTypeCommand;
 import com.testproject.calendar.generated.model.MeetingType;
 import com.testproject.calendar.generated.model.MeetingTypeList;
+import com.testproject.calendar.generated.model.OwnerBookingList;
+import com.testproject.calendar.generated.model.BookingDetails;
 import com.testproject.calendar.owner.OwnerState;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +22,24 @@ public class OwnerController implements OwnerApi {
 
     public OwnerController(OwnerState owner) {
         this.owner = owner;
+    }
+
+    @Override
+    public ResponseEntity<OwnerBookingList> listOwnerBookings(String view, String status) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(new OwnerBookingList(owner.ownerBookings(view, status)));
+    }
+
+    @Override
+    public ResponseEntity<BookingDetails> getOwnerBooking(String id) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(owner.ownerBooking(id));
+    }
+
+    @Override
+    public ResponseEntity<OwnerBookingList> getOwnerCalendar(
+            java.time.OffsetDateTime from, java.time.OffsetDateTime to) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(new OwnerBookingList(owner.ownerCalendar(from, to)));
     }
 
     @Override

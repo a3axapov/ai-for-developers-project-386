@@ -335,6 +335,49 @@ model SubmittedBookingAttempt {
   resultUrl: string;
 }
 
+@doc("Owner-only booking snapshots. No result URLs, access tokens or attempt secrets.")
+model OwnerBookingList {
+  items: BookingDetails[];
+}
+
+@get
+@route("/owner/calendar")
+@tag("Owner")
+@operationId("getOwnerCalendar")
+@doc("Existing bookings overlapping the actual half-open range [from, to), ordered by start. Includes historical and terminal bookings; no separate event copies. From must precede to (422); missing/malformed moments give 400. Manual blocks are not yet implemented.")
+op getOwnerCalendar(@query from: offsetDateTime, @query to: offsetDateTime):
+  | {
+      @header("Cache-Control") cacheControl: "no-store";
+      @body body: OwnerBookingList;
+    }
+  | InvalidData
+  | MalformedRequest;
+
+@get
+@route("/owner/bookings/{id}")
+@tag("Owner")
+@operationId("getOwnerBooking")
+@doc("Current owner-only details by booking ID, without result tokens. Reading refreshes approval expiry.")
+op getOwnerBooking(@path id: string):
+  | {
+      @header("Cache-Control") cacheControl: "no-store";
+      @body body: BookingDetails;
+    }
+  | PageNotFound;
+
+@get
+@route("/owner/bookings")
+@tag("Owner")
+@operationId("listOwnerBookings")
+@doc("All types in ascending actual start order. Upcoming is PENDING or CONFIRMED with start strictly after now; history is its complement. Status only narrows the selected view.")
+op listOwnerBookings(@query view: string, @query status?: string):
+  | {
+      @header("Cache-Control") cacheControl: "no-store";
+      @body body: OwnerBookingList;
+    }
+  | InvalidData
+  | MalformedRequest;
+
 @doc("Read-only saved attempt outcome. PREPARED has no booking; SUCCEEDED includes booking and resultUrl; FAILED includes the saved definite error.")
 model BookingAttemptResult {
   state: "PREPARED" | "SUCCEEDED" | "FAILED";

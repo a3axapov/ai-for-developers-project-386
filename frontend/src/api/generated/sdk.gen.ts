@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { CreateMeetingTypeData, CreateMeetingTypeErrors, CreateMeetingTypeResponses, GetBookingAttemptData, GetBookingAttemptErrors, GetBookingAttemptResponses, GetBookingEntryData, GetBookingEntryResponses, GetBookingResultData, GetBookingResultErrors, GetBookingResultResponses, GetHealthData, GetHealthResponses, GetMeetingTypeData, GetMeetingTypeErrors, GetMeetingTypeResponses, GetOwnerOperationData, GetOwnerOperationErrors, GetOwnerOperationResponses, GetOwnerProfileData, GetOwnerProfileResponses, GetPublicBookingPageData, GetPublicBookingPageErrors, GetPublicBookingPageResponses, GetPublicMeetingTypeData, GetPublicMeetingTypeErrors, GetPublicMeetingTypeResponses, GetPublicSlotsData, GetPublicSlotsErrors, GetPublicSlotsResponses, ListMeetingTypesData, ListMeetingTypesResponses, PrepareBookingAttemptData, PrepareBookingAttemptErrors, PrepareBookingAttemptResponses, SetPublicBookingData, SetPublicBookingErrors, SetPublicBookingResponses, SubmitBookingAttemptData, SubmitBookingAttemptErrors, SubmitBookingAttemptResponses, UpdateOwnerProfileData, UpdateOwnerProfileErrors, UpdateOwnerProfileResponses } from './types.gen';
+import type { CreateMeetingTypeData, CreateMeetingTypeErrors, CreateMeetingTypeResponses, GetBookingAttemptData, GetBookingAttemptErrors, GetBookingAttemptResponses, GetBookingEntryData, GetBookingEntryResponses, GetBookingResultData, GetBookingResultErrors, GetBookingResultResponses, GetHealthData, GetHealthResponses, GetMeetingTypeData, GetMeetingTypeErrors, GetMeetingTypeResponses, GetOwnerBookingData, GetOwnerBookingErrors, GetOwnerBookingResponses, GetOwnerCalendarData, GetOwnerCalendarErrors, GetOwnerCalendarResponses, GetOwnerOperationData, GetOwnerOperationErrors, GetOwnerOperationResponses, GetOwnerProfileData, GetOwnerProfileResponses, GetPublicBookingPageData, GetPublicBookingPageErrors, GetPublicBookingPageResponses, GetPublicMeetingTypeData, GetPublicMeetingTypeErrors, GetPublicMeetingTypeResponses, GetPublicSlotsData, GetPublicSlotsErrors, GetPublicSlotsResponses, ListMeetingTypesData, ListMeetingTypesResponses, ListOwnerBookingsData, ListOwnerBookingsErrors, ListOwnerBookingsResponses, PrepareBookingAttemptData, PrepareBookingAttemptErrors, PrepareBookingAttemptResponses, SetPublicBookingData, SetPublicBookingErrors, SetPublicBookingResponses, SubmitBookingAttemptData, SubmitBookingAttemptErrors, SubmitBookingAttemptResponses, UpdateOwnerProfileData, UpdateOwnerProfileErrors, UpdateOwnerProfileResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -37,6 +37,21 @@ export const getBookingResult = <ThrowOnError extends boolean = false>(options: 
  * Check that the application is running.
  */
 export const getHealth = <ThrowOnError extends boolean = false>(options?: Options<GetHealthData, ThrowOnError>): RequestResult<GetHealthResponses, unknown, ThrowOnError> => (options?.client ?? client).get<GetHealthResponses, unknown, ThrowOnError>({ url: '/api/health', ...options });
+
+/**
+ * All types in ascending actual start order. Upcoming is PENDING or CONFIRMED with start strictly after now; history is its complement. Status only narrows the selected view.
+ */
+export const listOwnerBookings = <ThrowOnError extends boolean = false>(options: Options<ListOwnerBookingsData, ThrowOnError>): RequestResult<ListOwnerBookingsResponses, ListOwnerBookingsErrors, ThrowOnError> => (options.client ?? client).get<ListOwnerBookingsResponses, ListOwnerBookingsErrors, ThrowOnError>({ url: '/api/owner/bookings', ...options });
+
+/**
+ * Current owner-only details by booking ID, without result tokens. Reading refreshes approval expiry.
+ */
+export const getOwnerBooking = <ThrowOnError extends boolean = false>(options: Options<GetOwnerBookingData, ThrowOnError>): RequestResult<GetOwnerBookingResponses, GetOwnerBookingErrors, ThrowOnError> => (options.client ?? client).get<GetOwnerBookingResponses, GetOwnerBookingErrors, ThrowOnError>({ url: '/api/owner/bookings/{id}', ...options });
+
+/**
+ * Existing bookings overlapping the actual half-open range [from, to), ordered by start. Includes historical and terminal bookings; no separate event copies. From must precede to (422); missing/malformed moments give 400. Manual blocks are not yet implemented.
+ */
+export const getOwnerCalendar = <ThrowOnError extends boolean = false>(options: Options<GetOwnerCalendarData, ThrowOnError>): RequestResult<GetOwnerCalendarResponses, GetOwnerCalendarErrors, ThrowOnError> => (options.client ?? client).get<GetOwnerCalendarResponses, GetOwnerCalendarErrors, ThrowOnError>({ url: '/api/owner/calendar', ...options });
 
 export const listMeetingTypes = <ThrowOnError extends boolean = false>(options?: Options<ListMeetingTypesData, ThrowOnError>): RequestResult<ListMeetingTypesResponses, unknown, ThrowOnError> => (options?.client ?? client).get<ListMeetingTypesResponses, unknown, ThrowOnError>({ url: '/api/owner/meeting-types', ...options });
 

@@ -6,9 +6,14 @@
 package com.testproject.calendar.generated.api;
 
 import com.testproject.calendar.generated.model.ApiError;
+import com.testproject.calendar.generated.model.BookingDetails;
 import com.testproject.calendar.generated.model.CreateMeetingTypeCommand;
+import org.springframework.format.annotation.DateTimeFormat;
 import com.testproject.calendar.generated.model.MeetingType;
 import com.testproject.calendar.generated.model.MeetingTypeList;
+import org.springframework.lang.Nullable;
+import java.time.OffsetDateTime;
+import com.testproject.calendar.generated.model.OwnerBookingList;
 import com.testproject.calendar.generated.model.OwnerOperationResult;
 import com.testproject.calendar.generated.model.OwnerProfile;
 import com.testproject.calendar.generated.model.ProfileCommand;
@@ -69,6 +74,47 @@ public interface OwnerApi {
     );
 
 
+    String PATH_GET_OWNER_BOOKING = "/api/owner/bookings/{id}";
+    /**
+     * GET /api/owner/bookings/{id}
+     * Current owner-only details by booking ID, without result tokens. Reading refreshes approval expiry.
+     *
+     * @param id  (required)
+     * @return The request has succeeded. (status code 200)
+     *         or The server cannot find the requested resource. (status code 404)
+     */
+    @RequestMapping(
+        method = RequestMethod.GET,
+        value = OwnerApi.PATH_GET_OWNER_BOOKING,
+        produces = { "application/json" }
+    )
+    ResponseEntity<BookingDetails> getOwnerBooking(
+         @PathVariable("id") String id
+    );
+
+
+    String PATH_GET_OWNER_CALENDAR = "/api/owner/calendar";
+    /**
+     * GET /api/owner/calendar
+     * Existing bookings overlapping the actual half-open range [from, to), ordered by start. Includes historical and terminal bookings; no separate event copies. From must precede to (422); missing/malformed moments give 400. Manual blocks are not yet implemented.
+     *
+     * @param from  (required)
+     * @param to  (required)
+     * @return The request has succeeded. (status code 200)
+     *         or The server could not understand the request due to invalid syntax. (status code 400)
+     *         or Client error (status code 422)
+     */
+    @RequestMapping(
+        method = RequestMethod.GET,
+        value = OwnerApi.PATH_GET_OWNER_CALENDAR,
+        produces = { "application/json" }
+    )
+    ResponseEntity<OwnerBookingList> getOwnerCalendar(
+         @RequestParam(value = "from", required = true) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime from,
+         @RequestParam(value = "to", required = true) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime to
+    );
+
+
     String PATH_GET_OWNER_OPERATION = "/api/owner/operations/{key}";
     /**
      * GET /api/owner/operations/{key}
@@ -118,6 +164,28 @@ public interface OwnerApi {
     )
     ResponseEntity<MeetingTypeList> listMeetingTypes(
         
+    );
+
+
+    String PATH_LIST_OWNER_BOOKINGS = "/api/owner/bookings";
+    /**
+     * GET /api/owner/bookings
+     * All types in ascending actual start order. Upcoming is PENDING or CONFIRMED with start strictly after now; history is its complement. Status only narrows the selected view.
+     *
+     * @param view  (required)
+     * @param status  (optional)
+     * @return The request has succeeded. (status code 200)
+     *         or The server could not understand the request due to invalid syntax. (status code 400)
+     *         or Client error (status code 422)
+     */
+    @RequestMapping(
+        method = RequestMethod.GET,
+        value = OwnerApi.PATH_LIST_OWNER_BOOKINGS,
+        produces = { "application/json" }
+    )
+    ResponseEntity<OwnerBookingList> listOwnerBookings(
+         @RequestParam(value = "view", required = true) String view,
+         @RequestParam(value = "status", required = false) @Nullable String status
     );
 
 

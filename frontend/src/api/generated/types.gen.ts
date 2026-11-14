@@ -109,6 +109,13 @@ export type MeetingTypeList = {
 };
 
 /**
+ * Owner-only booking snapshots. No result URLs, access tokens or attempt secrets.
+ */
+export type OwnerBookingList = {
+    items: Array<BookingDetails>;
+};
+
+/**
  * The saved, definite result of an owner command. Exactly one of profile, meetingType or error is present.
  */
 export type OwnerOperationResult = {
@@ -377,6 +384,97 @@ export type GetHealthResponses = {
 };
 
 export type GetHealthResponse = GetHealthResponses[keyof GetHealthResponses];
+
+export type ListOwnerBookingsData = {
+    body?: never;
+    path?: never;
+    query: {
+        view: string;
+        status?: string;
+    };
+    url: '/api/owner/bookings';
+};
+
+export type ListOwnerBookingsErrors = {
+    /**
+     * The server could not understand the request due to invalid syntax.
+     */
+    400: ApiError;
+    /**
+     * Client error
+     */
+    422: ApiError;
+};
+
+export type ListOwnerBookingsError = ListOwnerBookingsErrors[keyof ListOwnerBookingsErrors];
+
+export type ListOwnerBookingsResponses = {
+    /**
+     * The request has succeeded.
+     */
+    200: OwnerBookingList;
+};
+
+export type ListOwnerBookingsResponse = ListOwnerBookingsResponses[keyof ListOwnerBookingsResponses];
+
+export type GetOwnerBookingData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/owner/bookings/{id}';
+};
+
+export type GetOwnerBookingErrors = {
+    /**
+     * The server cannot find the requested resource.
+     */
+    404: ApiError;
+};
+
+export type GetOwnerBookingError = GetOwnerBookingErrors[keyof GetOwnerBookingErrors];
+
+export type GetOwnerBookingResponses = {
+    /**
+     * The request has succeeded.
+     */
+    200: BookingDetails;
+};
+
+export type GetOwnerBookingResponse = GetOwnerBookingResponses[keyof GetOwnerBookingResponses];
+
+export type GetOwnerCalendarData = {
+    body?: never;
+    path?: never;
+    query: {
+        from: string;
+        to: string;
+    };
+    url: '/api/owner/calendar';
+};
+
+export type GetOwnerCalendarErrors = {
+    /**
+     * The server could not understand the request due to invalid syntax.
+     */
+    400: ApiError;
+    /**
+     * Client error
+     */
+    422: ApiError;
+};
+
+export type GetOwnerCalendarError = GetOwnerCalendarErrors[keyof GetOwnerCalendarErrors];
+
+export type GetOwnerCalendarResponses = {
+    /**
+     * The request has succeeded.
+     */
+    200: OwnerBookingList;
+};
+
+export type GetOwnerCalendarResponse = GetOwnerCalendarResponses[keyof GetOwnerCalendarResponses];
 
 export type ListMeetingTypesData = {
     body?: never;

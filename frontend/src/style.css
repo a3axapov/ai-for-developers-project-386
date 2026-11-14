@@ -13,6 +13,35 @@
   overflow-wrap: anywhere;
 }
 
+.owner-bookings {
+  margin-block: 2rem;
+  overflow-wrap: anywhere;
+}
+
+.owner-bookings label {
+  display: block;
+  margin-block: 1rem;
+}
+
+.owner-bookings input,
+.owner-bookings select {
+  display: block;
+  width: 100%;
+  max-width: 35rem;
+  min-width: 0;
+  padding: 0.6rem;
+  font: inherit;
+}
+
+.owner-bookings li {
+  margin-block: 1rem;
+}
+
+.owner-bookings .button {
+  max-width: 100%;
+  white-space: normal;
+}
+
 .guest-form label {
   display: block;
 }

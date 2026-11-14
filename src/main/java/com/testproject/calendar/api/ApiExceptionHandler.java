@@ -43,6 +43,14 @@ public class ApiExceptionHandler {
                 new ApiError("MALFORMED_REQUEST", "Укажите непустой Idempotency-Key.")));
     }
 
+    @ExceptionHandler({
+        org.springframework.web.bind.MissingServletRequestParameterException.class,
+        org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class
+    })
+    public ResponseEntity<ApiError> handleMalformedQuery() {
+        return malformedPublicRequest();
+    }
+
     @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
     public ResponseEntity<ApiError> handleNonJsonBody(HttpServletRequest request) throws IOException {
         if (request.getRequestURI().startsWith("/api/public/")) {

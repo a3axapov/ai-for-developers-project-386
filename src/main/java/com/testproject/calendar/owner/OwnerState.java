@@ -186,6 +186,49 @@ public class OwnerState {
         return bookingSnapshot(booking);
     }
 
+    public synchronized BookingDetails ownerBooking(String id) {
+        var booking = bookings.get(id);
+        if (booking == null) {
+            throw new ApiFailure(404, new ApiError("BOOKING_NOT_FOUND", "Бронирование не найдено"));
+        }
+        refreshBookings();
+        return bookingSnapshot(booking);
+    }
+
+    public synchronized List<BookingDetails> ownerCalendar(java.time.OffsetDateTime from, java.time.OffsetDateTime to) {
+        if (!from.toInstant().isBefore(to.toInstant())) {
+            throw new ApiFailure(422, new ApiError("VALIDATION_FAILED", "Начало диапазона должно быть раньше конца.")
+                    .fieldErrors(List.of(new FieldError("to", "INVALID_VALUE", "Укажите конец позже начала."))));
+        }
+        refreshBookings();
+        return bookings.values().stream()
+                .filter(booking -> booking.getStartsAt().toInstant().isBefore(to.toInstant())
+                        && from.toInstant().isBefore(booking.getEndsAt().toInstant()))
+                .sorted(java.util.Comparator.comparing(booking -> booking.getStartsAt().toInstant()))
+                .map(this::bookingSnapshot).toList();
+    }
+
+    public synchronized List<BookingDetails> ownerBookings(String view, String status) {
+        if (!List.of("upcoming", "history").contains(view)
+                || (status != null && java.util.Arrays.stream(BookingDetails.StatusEnum.values())
+                        .noneMatch(value -> value.getValue().equals(status)))) {
+            throw new ApiFailure(422, new ApiError("VALIDATION_FAILED", "Проверьте фильтры бронирований.")
+                    .fieldErrors(List.of(new FieldError(
+                            List.of("upcoming", "history").contains(view) ? "status" : "view",
+                            "INVALID_VALUE", "Выберите допустимый фильтр."))));
+        }
+        refreshBookings();
+        var now = clock.instant();
+        return bookings.values().stream().filter(booking -> {
+            boolean upcoming = (booking.getStatus() == BookingDetails.StatusEnum.PENDING
+                    || booking.getStatus() == BookingDetails.StatusEnum.CONFIRMED)
+                    && booking.getStartsAt().toInstant().isAfter(now);
+            return upcoming == view.equals("upcoming")
+                    && (status == null || booking.getStatus().getValue().equals(status));
+        }).sorted(java.util.Comparator.comparing(booking -> booking.getStartsAt().toInstant()))
+                .map(this::bookingSnapshot).toList();
+    }
+
     private void refreshBookings() {
         var now = clock.instant();
         for (var booking : bookings.values()) {

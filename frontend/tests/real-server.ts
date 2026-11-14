@@ -1,5 +1,7 @@
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
+import { mkdtemp, writeFile, rename, rm } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import { expect, test as base } from '@playwright/test';
 
 // Each mutable scenario gets its own real application state; the read-only suite uses 4173.
@@ -7,7 +9,11 @@ export const test = base.extend<{
   ownerUsername: string;
   serverArguments: string[];
   fixedNow: string | undefined;
-  serverLifecycle: { restart?: () => Promise<void> };
+  serverLifecycle: {
+    restart?: () => Promise<void>;
+    setNow?: (instant: string) => Promise<void>;
+  };
+  setServerNow: (instant: string) => Promise<void>;
   restartServer: () => Promise<void>;
 }>({
   ownerUsername: ['anna-1', { option: true }],
@@ -21,10 +27,24 @@ export const test = base.extend<{
     void baseURL;
     await use(() => serverLifecycle.restart!());
   },
+  setServerNow: async ({ baseURL, serverLifecycle }, use) => {
+    void baseURL;
+    await use((instant) => serverLifecycle.setNow!(instant));
+  },
   baseURL: async (
     { playwright, ownerUsername, serverArguments, fixedNow, serverLifecycle },
     use,
   ) => {
+    const clockDirectory = fixedNow
+      ? await mkdtemp(resolve('../build/browser-clock-'))
+      : undefined;
+    const clockFile = clockDirectory && resolve(clockDirectory, 'now');
+    if (clockFile) await writeFile(clockFile, fixedNow!);
+    serverLifecycle.setNow = async (instant) => {
+      if (!clockFile) throw new Error('setServerNow requires fixedNow');
+      await writeFile(`${clockFile}.next`, instant);
+      await rename(`${clockFile}.next`, clockFile);
+    };
     const launcher = fixedNow
       ? [
           '-Dloader.path=../build/classes/java/test',
@@ -33,6 +53,7 @@ export const test = base.extend<{
           '../build/libs/calendar.jar',
           'org.springframework.boot.loader.launch.PropertiesLauncher',
           `--slot-test.now=${fixedNow}`,
+          `--slot-test.clock-file=${clockFile}`,
         ]
       : ['-jar', '../build/libs/calendar.jar'];
     const launch = () =>
@@ -93,6 +114,7 @@ export const test = base.extend<{
     } finally {
       await client.dispose();
       await stop();
+      if (clockDirectory) await rm(clockDirectory, { recursive: true });
     }
   },
 });

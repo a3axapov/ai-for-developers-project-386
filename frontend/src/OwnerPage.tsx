@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { MeetingTypes, type MeetingTypeDraft } from './MeetingTypes';
+import { OwnerBookings } from './OwnerBookings';
 import {
   getOwnerProfile,
   getOwnerOperation,
@@ -366,7 +367,7 @@ export function OwnerPage() {
               setState({ status: 'ready', profile })
             }
           />
-          <p>Управление расписанием и бронированиями появится позже.</p>
+          <OwnerBookings />
         </>
       )}
       <a className="button" href="/">
