@@ -509,7 +509,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/OwnerBookingList'
+                $ref: '#/components/schemas/OwnerCalendar'
         '400':
           description: The server could not understand the request due to invalid syntax.
           content:
@@ -1266,6 +1266,170 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/PublicBookingCommand'
+  /api/owner/time-blocks:
+    post:
+      operationId: createTimeBlock
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/IdempotencyKey'
+      responses:
+        '201':
+          description: The request has succeeded and a new resource has been created as a result.
+          headers:
+            Cache-Control:
+              required: true
+              schema:
+                type: string
+                enum:
+                  - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimeBlockResult'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: The request conflicts with the current state of the server.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      tags:
+        - Owner
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTimeBlockCommand'
+  /api/owner/time-blocks/{id}:
+    put:
+      operationId: updateTimeBlock
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/IdempotencyKey'
+      responses:
+        '200':
+          description: The request has succeeded.
+          headers:
+            Cache-Control:
+              required: true
+              schema:
+                type: string
+                enum:
+                  - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimeBlockResult'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: The request conflicts with the current state of the server.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      tags:
+        - Owner
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTimeBlockCommand'
+    delete:
+      operationId: deleteTimeBlock
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/IdempotencyKey'
+      responses:
+        '204':
+          description: 'There is no content to send for this request, but the headers may be useful. '
+          headers:
+            Cache-Control:
+              required: true
+              schema:
+                type: string
+                enum:
+                  - no-store
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: The request conflicts with the current state of the server.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      tags:
+        - Owner
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteTimeBlockCommand'
   /api/public/booking-entry/current:
     get:
       operationId: getBookingEntry
@@ -1491,7 +1655,7 @@ components:
         version:
           type: integer
           format: int64
-      description: 'Impact preview only: no guest result link or attempt credentials. Only future PENDING/CONFIRMED bookings valid now and invalid under the proposal. Status/version/time changes require fresh consent.'
+      description: Impact preview only, without result links or attempt credentials. Availability changes show newly invalid future active bookings; time blocks show all overlapping unexpired pending requests, even if already outside availability. Status/version/time changes require fresh consent.
     ApiError:
       type: object
       required:
@@ -1510,6 +1674,8 @@ components:
           $ref: '#/components/schemas/MeetingType'
         currentOutOfOffice:
           $ref: '#/components/schemas/OutOfOffice'
+        currentTimeBlock:
+          $ref: '#/components/schemas/TimeBlock'
         currentConditions:
           $ref: '#/components/schemas/PublicMeetingType'
         fieldErrors:
@@ -1668,6 +1834,24 @@ components:
           type: string
         confirmationToken:
           type: string
+    CreateTimeBlockCommand:
+      type: object
+      required:
+        - title
+        - startsAt
+        - endsAt
+      properties:
+        title:
+          type: string
+        startsAt:
+          type: string
+          format: date-time
+          description: Literal local date-time and explicit UTC offset must be valid together in the CURRENT owner zone. DST gaps and offsets not offered by that zone are rejected, never shifted.
+        endsAt:
+          type: string
+          format: date-time
+        confirmationToken:
+          type: string
     DateOverride:
       type: object
       required:
@@ -1716,6 +1900,14 @@ components:
           format: int64
         confirmationToken:
           type: string
+    DeleteTimeBlockCommand:
+      type: object
+      required:
+        - expectedVersion
+      properties:
+        expectedVersion:
+          type: integer
+          format: int64
     FieldError:
       type: object
       required:
@@ -1834,6 +2026,20 @@ components:
           items:
             $ref: '#/components/schemas/BookingDetails'
       description: Owner-only booking snapshots. No result URLs, access tokens or attempt secrets.
+    OwnerCalendar:
+      type: object
+      required:
+        - items
+        - timeBlocks
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/BookingDetails'
+        timeBlocks:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimeBlock'
     OwnerOperationResult:
       type: object
       required:
@@ -1848,11 +2054,13 @@ components:
           $ref: '#/components/schemas/MeetingType'
         outOfOffice:
           $ref: '#/components/schemas/OutOfOffice'
+        timeBlockResult:
+          $ref: '#/components/schemas/TimeBlockResult'
         booking:
           $ref: '#/components/schemas/BookingDetails'
         error:
           $ref: '#/components/schemas/ApiError'
-      description: The saved, definite result of an owner command. Exactly one of profile, meetingType, booking or error is present. Booking is the snapshot at command completion, not a new decision.
+      description: The saved, definite result of an owner command; 204 has no resource. Present resources are command-completion snapshots, not new decisions.
     OwnerProfile:
       type: object
       required:
@@ -2076,6 +2284,40 @@ components:
           $ref: '#/components/schemas/BookingDetails'
         resultUrl:
           type: string
+    TimeBlock:
+      type: object
+      required:
+        - id
+        - title
+        - startsAt
+        - endsAt
+        - version
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int64
+    TimeBlockResult:
+      type: object
+      required:
+        - timeBlock
+        - rejectedBookingIds
+      properties:
+        timeBlock:
+          $ref: '#/components/schemas/TimeBlock'
+        rejectedBookingIds:
+          type: array
+          items:
+            type: string
     UpdateMeetingTypeCommand:
       type: object
       required:
@@ -2107,6 +2349,16 @@ components:
           format: int64
       allOf:
         - $ref: '#/components/schemas/CreateOutOfOfficeCommand'
+    UpdateTimeBlockCommand:
+      type: object
+      required:
+        - expectedVersion
+      properties:
+        expectedVersion:
+          type: integer
+          format: int64
+      allOf:
+        - $ref: '#/components/schemas/CreateTimeBlockCommand'
     WeeklyHoursCommand:
       type: object
       required:

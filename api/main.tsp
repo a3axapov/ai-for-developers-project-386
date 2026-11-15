@@ -111,6 +111,95 @@ op updateMeetingType(
   | InvalidData
   | MalformedRequest;
 
+model TimeBlock {
+  id: string;
+  title: string;
+  startsAt: offsetDateTime;
+  endsAt: offsetDateTime;
+  version: int64;
+}
+
+model TimeBlockResult {
+  timeBlock: TimeBlock;
+  rejectedBookingIds: string[];
+}
+
+model CreateTimeBlockCommand {
+  title: string;
+
+  @doc("Literal local date-time and explicit UTC offset must be valid together in the CURRENT owner zone. DST gaps and offsets not offered by that zone are rejected, never shifted.")
+  startsAt: offsetDateTime;
+
+  endsAt: offsetDateTime;
+  confirmationToken?: string;
+}
+
+model UpdateTimeBlockCommand extends CreateTimeBlockCommand {
+  expectedVersion: int64;
+}
+
+model DeleteTimeBlockCommand {
+  expectedVersion: int64;
+}
+
+@post
+@route("/owner/time-blocks")
+@tag("Owner")
+@operationId("createTimeBlock")
+op createTimeBlock(
+  @header("Idempotency-Key") idempotencyKey: IdempotencyKey,
+  @body command: CreateTimeBlockCommand,
+):
+  | {
+      @statusCode statusCode: 201;
+      @header("Cache-Control") cacheControl: "no-store";
+      @body body: TimeBlockResult;
+    }
+  | StateConflict
+  | InvalidData
+  | MalformedRequest;
+
+@put
+@route("/owner/time-blocks/{id}")
+@tag("Owner")
+@operationId("updateTimeBlock")
+op updateTimeBlock(
+  @path id: string,
+  @header("Idempotency-Key") idempotencyKey: IdempotencyKey,
+  @body command: UpdateTimeBlockCommand,
+):
+  | {
+      @header("Cache-Control") cacheControl: "no-store";
+      @body body: TimeBlockResult;
+    }
+  | PageNotFound
+  | StateConflict
+  | InvalidData
+  | MalformedRequest;
+
+@delete
+@route("/owner/time-blocks/{id}")
+@tag("Owner")
+@operationId("deleteTimeBlock")
+op deleteTimeBlock(
+  @path id: string,
+  @header("Idempotency-Key") idempotencyKey: IdempotencyKey,
+  @body command: DeleteTimeBlockCommand,
+):
+  | {
+      @statusCode statusCode: 204;
+      @header("Cache-Control") cacheControl: "no-store";
+    }
+  | PageNotFound
+  | StateConflict
+  | InvalidData
+  | MalformedRequest;
+
+model OwnerCalendar {
+  items: BookingDetails[];
+  timeBlocks: TimeBlock[];
+}
+
 model OutOfOffice {
   id: string;
   startDate: string;
@@ -360,13 +449,14 @@ model ApiError {
   currentBooking?: BookingDetails;
   currentMeetingType?: MeetingType;
   currentOutOfOffice?: OutOfOffice;
+  currentTimeBlock?: TimeBlock;
   currentConditions?: PublicMeetingType;
   fieldErrors?: FieldError[];
   affectedBookings?: AffectedBooking[];
   confirmationToken?: string;
 }
 
-@doc("Impact preview only: no guest result link or attempt credentials. Only future PENDING/CONFIRMED bookings valid now and invalid under the proposal. Status/version/time changes require fresh consent.")
+@doc("Impact preview only, without result links or attempt credentials. Availability changes show newly invalid future active bookings; time blocks show all overlapping unexpired pending requests, even if already outside availability. Status/version/time changes require fresh consent.")
 model AffectedBooking {
   id: string;
   meetingTypeId: string;
@@ -643,7 +733,7 @@ op confirmOwnerBooking(
 op getOwnerCalendar(@query from: offsetDateTime, @query to: offsetDateTime):
   | {
       @header("Cache-Control") cacheControl: "no-store";
-      @body body: OwnerBookingList;
+      @body body: OwnerCalendar;
     }
   | InvalidData
   | MalformedRequest;
@@ -817,12 +907,13 @@ op setPublicBooking(
   | InvalidData
   | MalformedRequest;
 
-@doc("The saved, definite result of an owner command. Exactly one of profile, meetingType, booking or error is present. Booking is the snapshot at command completion, not a new decision.")
+@doc("The saved, definite result of an owner command; 204 has no resource. Present resources are command-completion snapshots, not new decisions.")
 model OwnerOperationResult {
   statusCode: int32;
   profile?: OwnerProfile;
   meetingType?: MeetingType;
   outOfOffice?: OutOfOffice;
+  timeBlockResult?: TimeBlockResult;
   booking?: BookingDetails;
   error?: ApiError;
 }

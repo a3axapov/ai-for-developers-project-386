@@ -15,7 +15,7 @@ import java.util.*;
 import jakarta.annotation.Generated;
 
 /**
- * Impact preview only: no guest result link or attempt credentials. Only future PENDING/CONFIRMED bookings valid now and invalid under the proposal. Status/version/time changes require fresh consent.
+ * Impact preview only, without result links or attempt credentials. Availability changes show newly invalid future active bookings; time blocks show all overlapping unexpired pending requests, even if already outside availability. Status/version/time changes require fresh consent.
  */
 
 @Generated(value = "org.openapitools.codegen.languages.SpringCodegen", comments = "Generator version: 7.27.0")

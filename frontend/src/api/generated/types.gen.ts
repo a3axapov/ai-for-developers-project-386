@@ -5,7 +5,7 @@ export type ClientOptions = {
 };
 
 /**
- * Impact preview only: no guest result link or attempt credentials. Only future PENDING/CONFIRMED bookings valid now and invalid under the proposal. Status/version/time changes require fresh consent.
+ * Impact preview only, without result links or attempt credentials. Availability changes show newly invalid future active bookings; time blocks show all overlapping unexpired pending requests, even if already outside availability. Status/version/time changes require fresh consent.
  */
 export type AffectedBooking = {
     id: string;
@@ -25,6 +25,7 @@ export type ApiError = {
     currentBooking?: BookingDetails;
     currentMeetingType?: MeetingType;
     currentOutOfOffice?: OutOfOffice;
+    currentTimeBlock?: TimeBlock;
     currentConditions?: PublicMeetingType;
     fieldErrors?: Array<FieldError>;
     affectedBookings?: Array<AffectedBooking>;
@@ -102,6 +103,16 @@ export type CreateOutOfOfficeCommand = {
     confirmationToken?: string;
 };
 
+export type CreateTimeBlockCommand = {
+    title: string;
+    /**
+     * Literal local date-time and explicit UTC offset must be valid together in the CURRENT owner zone. DST gaps and offsets not offered by that zone are rejected, never shifted.
+     */
+    startsAt: string;
+    endsAt: string;
+    confirmationToken?: string;
+};
+
 export type DateOverride = {
     date: string;
     intervals: Array<WorkingInterval>;
@@ -124,6 +135,10 @@ export type DeleteDateOverrideCommand = {
 export type DeleteOutOfOfficeCommand = {
     expectedVersion: number;
     confirmationToken?: string;
+};
+
+export type DeleteTimeBlockCommand = {
+    expectedVersion: number;
 };
 
 export type FieldError = {
@@ -183,14 +198,20 @@ export type OwnerBookingList = {
     items: Array<BookingDetails>;
 };
 
+export type OwnerCalendar = {
+    items: Array<BookingDetails>;
+    timeBlocks: Array<TimeBlock>;
+};
+
 /**
- * The saved, definite result of an owner command. Exactly one of profile, meetingType, booking or error is present. Booking is the snapshot at command completion, not a new decision.
+ * The saved, definite result of an owner command; 204 has no resource. Present resources are command-completion snapshots, not new decisions.
  */
 export type OwnerOperationResult = {
     statusCode: number;
     profile?: OwnerProfile;
     meetingType?: MeetingType;
     outOfOffice?: OutOfOffice;
+    timeBlockResult?: TimeBlockResult;
     booking?: BookingDetails;
     error?: ApiError;
 };
@@ -322,6 +343,19 @@ export type SubmittedBookingAttempt = {
     resultUrl: string;
 };
 
+export type TimeBlock = {
+    id: string;
+    title: string;
+    startsAt: string;
+    endsAt: string;
+    version: number;
+};
+
+export type TimeBlockResult = {
+    timeBlock: TimeBlock;
+    rejectedBookingIds: Array<string>;
+};
+
 export type UpdateMeetingTypeCommand = {
     title: string;
     description: string;
@@ -331,6 +365,10 @@ export type UpdateMeetingTypeCommand = {
 };
 
 export type UpdateOutOfOfficeCommand = CreateOutOfOfficeCommand & {
+    expectedVersion: number;
+};
+
+export type UpdateTimeBlockCommand = CreateTimeBlockCommand & {
     expectedVersion: number;
 };
 
@@ -727,7 +765,7 @@ export type GetOwnerCalendarResponses = {
     /**
      * The request has succeeded.
      */
-    200: OwnerBookingList;
+    200: OwnerCalendar;
 };
 
 export type GetOwnerCalendarResponse = GetOwnerCalendarResponses[keyof GetOwnerCalendarResponses];
@@ -1273,6 +1311,126 @@ export type SetPublicBookingResponses = {
 };
 
 export type SetPublicBookingResponse = SetPublicBookingResponses[keyof SetPublicBookingResponses];
+
+export type CreateTimeBlockData = {
+    body: CreateTimeBlockCommand;
+    headers: {
+        'Idempotency-Key': IdempotencyKey;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/owner/time-blocks';
+};
+
+export type CreateTimeBlockErrors = {
+    /**
+     * The server could not understand the request due to invalid syntax.
+     */
+    400: ApiError;
+    /**
+     * The request conflicts with the current state of the server.
+     */
+    409: ApiError;
+    /**
+     * Client error
+     */
+    422: ApiError;
+};
+
+export type CreateTimeBlockError = CreateTimeBlockErrors[keyof CreateTimeBlockErrors];
+
+export type CreateTimeBlockResponses = {
+    /**
+     * The request has succeeded and a new resource has been created as a result.
+     */
+    201: TimeBlockResult;
+};
+
+export type CreateTimeBlockResponse = CreateTimeBlockResponses[keyof CreateTimeBlockResponses];
+
+export type DeleteTimeBlockData = {
+    body: DeleteTimeBlockCommand;
+    headers: {
+        'Idempotency-Key': IdempotencyKey;
+    };
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/owner/time-blocks/{id}';
+};
+
+export type DeleteTimeBlockErrors = {
+    /**
+     * The server could not understand the request due to invalid syntax.
+     */
+    400: ApiError;
+    /**
+     * The server cannot find the requested resource.
+     */
+    404: ApiError;
+    /**
+     * The request conflicts with the current state of the server.
+     */
+    409: ApiError;
+    /**
+     * Client error
+     */
+    422: ApiError;
+};
+
+export type DeleteTimeBlockError = DeleteTimeBlockErrors[keyof DeleteTimeBlockErrors];
+
+export type DeleteTimeBlockResponses = {
+    /**
+     * There is no content to send for this request, but the headers may be useful.
+     */
+    204: void;
+};
+
+export type DeleteTimeBlockResponse = DeleteTimeBlockResponses[keyof DeleteTimeBlockResponses];
+
+export type UpdateTimeBlockData = {
+    body: UpdateTimeBlockCommand;
+    headers: {
+        'Idempotency-Key': IdempotencyKey;
+    };
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/owner/time-blocks/{id}';
+};
+
+export type UpdateTimeBlockErrors = {
+    /**
+     * The server could not understand the request due to invalid syntax.
+     */
+    400: ApiError;
+    /**
+     * The server cannot find the requested resource.
+     */
+    404: ApiError;
+    /**
+     * The request conflicts with the current state of the server.
+     */
+    409: ApiError;
+    /**
+     * Client error
+     */
+    422: ApiError;
+};
+
+export type UpdateTimeBlockError = UpdateTimeBlockErrors[keyof UpdateTimeBlockErrors];
+
+export type UpdateTimeBlockResponses = {
+    /**
+     * The request has succeeded.
+     */
+    200: TimeBlockResult;
+};
+
+export type UpdateTimeBlockResponse = UpdateTimeBlockResponses[keyof UpdateTimeBlockResponses];
 
 export type GetBookingEntryData = {
     body?: never;

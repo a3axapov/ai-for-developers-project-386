@@ -10,6 +10,7 @@ import {
   listOwnerBookings,
   type ApiError,
   type BookingDetails,
+  type TimeBlock,
 } from './api/generated';
 import { dateLabel, dayKey, timeLabel } from './displayTime';
 
@@ -20,7 +21,10 @@ const statusLabels = {
   CANCELLED: 'Отменено',
 };
 
-function interval(booking: BookingDetails, zone: string) {
+function interval(
+  booking: Pick<BookingDetails, 'startsAt' | 'endsAt'>,
+  zone: string,
+) {
   const label = (instant: string) =>
     `${dateLabel(dayKey(instant, zone))}, ${timeLabel(instant, zone)}`;
   return `${label(booking.startsAt)} — ${label(booking.endsAt)}`;
@@ -51,6 +55,7 @@ export function OwnerBookings({
   const [rangeDraft, setRangeDraft] = useState(range);
   const [reload, setReload] = useState(0);
   const [items, setItems] = useState<BookingDetails[]>([]);
+  const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([]);
   const [zone, setZone] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<ApiError>();
@@ -186,6 +191,7 @@ export function OwnerBookings({
     setLoading(true);
     setError(undefined);
     setItems([]);
+    setTimeBlocks([]);
   }
 
   function beginDetailRead() {
@@ -209,12 +215,16 @@ export function OwnerBookings({
         : listOwnerBookings({
             query: { view, ...(status ? { status } : {}) },
             signal,
-          });
+          }).then((result) => ({
+            ...result,
+            data: result.data ? { ...result.data, timeBlocks: [] } : undefined,
+          }));
     void Promise.all([result, getOwnerProfile({ signal })])
       .then(([bookings, profile]) => {
         if (signal.aborted) return;
         if (bookings.data && profile.data) {
           setItems(bookings.data.items);
+          setTimeBlocks(bookings.data.timeBlocks);
           setZone(profile.data.timeZone);
         } else {
           setError(
@@ -410,6 +420,19 @@ export function OwnerBookings({
           </li>
         ))}
       </ul>
+      {view === 'calendar' && !loading && !error && (
+        <ul aria-label="Блокировки во внутреннем календаре">
+          {timeBlocks.map((block) => (
+            <li key={block.id}>
+              <h3>Блокировка: {block.title}</h3>
+              <p>
+                {interval(block, zone)} ({zone})
+              </p>
+              <p>Личная занятость без гостя · версия {block.version}</p>
+            </li>
+          ))}
+        </ul>
+      )}
       {selectedId && (
         <section aria-label="Детали бронирования">
           <h3>Детали бронирования</h3>

@@ -19,6 +19,11 @@ import com.testproject.calendar.generated.model.DeleteOutOfOfficeCommand;
 import com.testproject.calendar.generated.model.MeetingType;
 import com.testproject.calendar.generated.model.MeetingTypeList;
 import com.testproject.calendar.generated.model.OwnerBookingList;
+import com.testproject.calendar.generated.model.OwnerCalendar;
+import com.testproject.calendar.generated.model.TimeBlockResult;
+import com.testproject.calendar.generated.model.CreateTimeBlockCommand;
+import com.testproject.calendar.generated.model.UpdateTimeBlockCommand;
+import com.testproject.calendar.generated.model.DeleteTimeBlockCommand;
 import com.testproject.calendar.generated.model.BookingDetails;
 import com.testproject.calendar.generated.model.BookingDecisionCommand;
 import com.testproject.calendar.owner.OwnerState;
@@ -33,6 +38,22 @@ public class OwnerController implements OwnerApi {
 
     public OwnerController(OwnerState owner) {
         this.owner = owner;
+    }
+
+    @Override
+    public ResponseEntity<TimeBlockResult> createTimeBlock(String key, CreateTimeBlockCommand command) {
+        return ResponseEntity.status(201).cacheControl(CacheControl.noStore()).body(owner.createBlock(key, command));
+    }
+
+    @Override
+    public ResponseEntity<TimeBlockResult> updateTimeBlock(String id, String key, UpdateTimeBlockCommand command) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(owner.updateBlock(key, id, command));
+    }
+
+    @Override
+    public ResponseEntity<Void> deleteTimeBlock(String id, String key, DeleteTimeBlockCommand command) {
+        owner.deleteBlock(key, id, command);
+        return ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build();
     }
 
     @Override
@@ -89,10 +110,12 @@ public class OwnerController implements OwnerApi {
     }
 
     @Override
-    public ResponseEntity<OwnerBookingList> getOwnerCalendar(
+    public ResponseEntity<OwnerCalendar> getOwnerCalendar(
             java.time.OffsetDateTime from, java.time.OffsetDateTime to) {
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
-                .body(new OwnerBookingList(owner.ownerCalendar(from, to)));
+        synchronized (owner) {
+            return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                    .body(new OwnerCalendar(owner.ownerCalendar(from, to), owner.calendarBlocks(from, to)));
+        }
     }
 
     @Override

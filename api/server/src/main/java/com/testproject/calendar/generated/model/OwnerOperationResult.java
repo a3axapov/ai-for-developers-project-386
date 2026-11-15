@@ -9,6 +9,7 @@ import com.testproject.calendar.generated.model.BookingDetails;
 import com.testproject.calendar.generated.model.MeetingType;
 import com.testproject.calendar.generated.model.OutOfOffice;
 import com.testproject.calendar.generated.model.OwnerProfile;
+import com.testproject.calendar.generated.model.TimeBlockResult;
 import org.springframework.lang.Nullable;
 import java.time.OffsetDateTime;
 
@@ -17,7 +18,7 @@ import java.util.*;
 import jakarta.annotation.Generated;
 
 /**
- * The saved, definite result of an owner command. Exactly one of profile, meetingType, booking or error is present. Booking is the snapshot at command completion, not a new decision.
+ * The saved, definite result of an owner command; 204 has no resource. Present resources are command-completion snapshots, not new decisions.
  */
 
 @Generated(value = "org.openapitools.codegen.languages.SpringCodegen", comments = "Generator version: 7.27.0")
@@ -30,6 +31,8 @@ public class OwnerOperationResult {
   private @Nullable MeetingType meetingType;
 
   private @Nullable OutOfOffice outOfOffice;
+
+  private @Nullable TimeBlockResult timeBlockResult;
 
   private @Nullable BookingDetails booking;
 
@@ -122,6 +125,25 @@ public class OwnerOperationResult {
     this.outOfOffice = outOfOffice;
   }
 
+  public OwnerOperationResult timeBlockResult(@Nullable TimeBlockResult timeBlockResult) {
+    this.timeBlockResult = timeBlockResult;
+    return this;
+  }
+
+  /**
+   * Get timeBlockResult
+   * @return timeBlockResult
+   */
+  @JsonProperty("timeBlockResult")
+  public @Nullable TimeBlockResult getTimeBlockResult() {
+    return timeBlockResult;
+  }
+
+  @JsonProperty("timeBlockResult")
+  public void setTimeBlockResult(@Nullable TimeBlockResult timeBlockResult) {
+    this.timeBlockResult = timeBlockResult;
+  }
+
   public OwnerOperationResult booking(@Nullable BookingDetails booking) {
     this.booking = booking;
     return this;
@@ -173,13 +195,14 @@ public class OwnerOperationResult {
         Objects.equals(this.profile, ownerOperationResult.profile) &&
         Objects.equals(this.meetingType, ownerOperationResult.meetingType) &&
         Objects.equals(this.outOfOffice, ownerOperationResult.outOfOffice) &&
+        Objects.equals(this.timeBlockResult, ownerOperationResult.timeBlockResult) &&
         Objects.equals(this.booking, ownerOperationResult.booking) &&
         Objects.equals(this.error, ownerOperationResult.error);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(statusCode, profile, meetingType, outOfOffice, booking, error);
+    return Objects.hash(statusCode, profile, meetingType, outOfOffice, timeBlockResult, booking, error);
   }
 
   @Override
@@ -190,6 +213,7 @@ public class OwnerOperationResult {
     sb.append("    profile: ").append(toIndentedString(profile)).append("\n");
     sb.append("    meetingType: ").append(toIndentedString(meetingType)).append("\n");
     sb.append("    outOfOffice: ").append(toIndentedString(outOfOffice)).append("\n");
+    sb.append("    timeBlockResult: ").append(toIndentedString(timeBlockResult)).append("\n");
     sb.append("    booking: ").append(toIndentedString(booking)).append("\n");
     sb.append("    error: ").append(toIndentedString(error)).append("\n");
     sb.append("}");

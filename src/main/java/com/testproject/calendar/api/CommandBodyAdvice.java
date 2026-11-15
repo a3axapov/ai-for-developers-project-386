@@ -12,6 +12,9 @@ import com.testproject.calendar.generated.model.DeleteDateOverrideCommand;
 import com.testproject.calendar.generated.model.CreateOutOfOfficeCommand;
 import com.testproject.calendar.generated.model.UpdateOutOfOfficeCommand;
 import com.testproject.calendar.generated.model.DeleteOutOfOfficeCommand;
+import com.testproject.calendar.generated.model.CreateTimeBlockCommand;
+import com.testproject.calendar.generated.model.UpdateTimeBlockCommand;
+import com.testproject.calendar.generated.model.DeleteTimeBlockCommand;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -44,7 +47,9 @@ public class CommandBodyAdvice extends RequestBodyAdviceAdapter {
                 || targetType == UpdateMeetingTypeCommand.class || targetType == ArchiveMeetingTypeCommand.class
                 || targetType == WeeklyHoursCommand.class || targetType == DateOverrideCommand.class
                 || targetType == DeleteDateOverrideCommand.class || targetType == CreateOutOfOfficeCommand.class
-                || targetType == UpdateOutOfOfficeCommand.class || targetType == DeleteOutOfOfficeCommand.class;
+                || targetType == UpdateOutOfOfficeCommand.class || targetType == DeleteOutOfOfficeCommand.class
+                || targetType == CreateTimeBlockCommand.class || targetType == UpdateTimeBlockCommand.class
+                || targetType == DeleteTimeBlockCommand.class;
     }
 
     @Override

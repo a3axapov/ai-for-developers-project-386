@@ -24,6 +24,11 @@ import com.testproject.calendar.generated.model.DateOverride;
 import com.testproject.calendar.generated.model.DateOverrideCommand;
 import com.testproject.calendar.generated.model.DeleteDateOverrideCommand;
 import com.testproject.calendar.generated.model.OutOfOffice;
+import com.testproject.calendar.generated.model.TimeBlock;
+import com.testproject.calendar.generated.model.TimeBlockResult;
+import com.testproject.calendar.generated.model.CreateTimeBlockCommand;
+import com.testproject.calendar.generated.model.UpdateTimeBlockCommand;
+import com.testproject.calendar.generated.model.DeleteTimeBlockCommand;
 import com.testproject.calendar.generated.model.CreateOutOfOfficeCommand;
 import com.testproject.calendar.generated.model.UpdateOutOfOfficeCommand;
 import com.testproject.calendar.generated.model.DeleteOutOfOfficeCommand;
@@ -59,6 +64,7 @@ public class OwnerState {
     private final Map<String, SavedCommand> operations = new HashMap<>();
     private final Map<String, MeetingType> meetingTypes = new LinkedHashMap<>();
     private final Map<String, OutOfOffice> vacations = new LinkedHashMap<>();
+    private final Map<String, TimeBlock> timeBlocks = new LinkedHashMap<>();
     private final java.security.SecureRandom random = new java.security.SecureRandom();
     private final Map<String, PreparedAttempt> attempts = new HashMap<>();
     private final Map<String, BookingDetails> bookings = new HashMap<>();
@@ -368,10 +374,15 @@ public class OwnerState {
 
     private boolean occupied(java.time.Instant start, java.time.Instant end, String excludedId) {
         refreshBookings();
-        return bookings.values().stream().anyMatch(booking ->
+        return blockClosed(start, end, null) || bookings.values().stream().anyMatch(booking ->
                 !booking.getId().equals(excludedId) && (booking.getStatus() == BookingDetails.StatusEnum.PENDING
                 || booking.getStatus() == BookingDetails.StatusEnum.CONFIRMED)
                 && start.isBefore(booking.getEndsAt().toInstant()) && booking.getStartsAt().toInstant().isBefore(end));
+    }
+
+    private boolean blockClosed(java.time.Instant start, java.time.Instant end, String excludedId) {
+        return timeBlocks.values().stream().anyMatch(block -> !block.getId().equals(excludedId)
+                && start.isBefore(block.getEndsAt().toInstant()) && block.getStartsAt().toInstant().isBefore(end));
     }
 
     public synchronized PreparedBookingAttempt prepareAttempt(String requestedUsername,
@@ -511,6 +522,136 @@ public class OwnerState {
     private record MeetingTypeArchive(String id, ArchiveMeetingTypeCommand command) { }
     private record WeeklyHoursEdit(String id, WeeklyHoursCommand command) { }
     private record DateOverrideEdit(String id, String date, Object command) { }
+
+    private record BlockCommand(String operation, String id, Object command) { }
+    private record DeletedBlock() { }
+    private record BlockProposal(String operation, String id, Long version, String title,
+            java.time.OffsetDateTime start, java.time.OffsetDateTime end, String zone) { }
+    private record BlockImpact(BlockProposal proposal, List<AffectedBooking> bookings) { }
+    private final Map<String, BlockImpact> blockConfirmations = new HashMap<>();
+
+    public synchronized List<TimeBlock> calendarBlocks(java.time.OffsetDateTime from, java.time.OffsetDateTime to) {
+        return timeBlocks.values().stream()
+                .filter(block -> from.toInstant().isBefore(block.getEndsAt().toInstant())
+                        && block.getStartsAt().toInstant().isBefore(to.toInstant()))
+                .sorted(java.util.Comparator.comparing(block -> block.getStartsAt().toInstant())).toList();
+    }
+
+    public synchronized TimeBlockResult createBlock(String key, CreateTimeBlockCommand command) {
+        return editBlock(key, "POST", null, command, command.getTitle(), command.getStartsAt(), command.getEndsAt(),
+                null, command.getConfirmationToken());
+    }
+
+    public synchronized TimeBlockResult updateBlock(String key, String id, UpdateTimeBlockCommand command) {
+        return editBlock(key, "PUT", id, command, command.getTitle(), command.getStartsAt(), command.getEndsAt(),
+                command.getExpectedVersion(), command.getConfirmationToken());
+    }
+
+    public synchronized void deleteBlock(String key, String id, DeleteTimeBlockCommand command) {
+        editBlock(key, "DELETE", id, command, null, null, null, command.getExpectedVersion(), null);
+    }
+
+    private TimeBlockResult editBlock(String key, String operation, String id, Object command, String title,
+            java.time.OffsetDateTime start, java.time.OffsetDateTime end, Long expectedVersion, String token) {
+        if (!validKey(key)) {
+            throw invalidKey();
+        }
+        var request = new BlockCommand(operation, id, command);
+        var saved = operations.get(key);
+        if (saved != null) {
+            if (!saved.request().equals(request)) {
+                throw new ApiFailure(409, new ApiError("IDEMPOTENCY_KEY_REUSED",
+                        "Этот ключ уже использован для другого запроса."));
+            }
+            if (saved.failure() != null) {
+                throw saved.failure();
+            }
+            return saved.result() instanceof TimeBlockResult result ? result : null;
+        }
+        try {
+            var current = id == null ? null : timeBlocks.get(id);
+            if (id != null) {
+                requireTypeVersionValue(expectedVersion);
+                if (current == null) {
+                    throw new ApiFailure(404, new ApiError("TIME_BLOCK_NOT_FOUND", "Блокировка не найдена."));
+                }
+                if (!current.getVersion().equals(expectedVersion)) {
+                    throw new ApiFailure(409, new ApiError("RESOURCE_CHANGED",
+                            "Блокировка изменилась. Проверьте актуальные данные.").currentTimeBlock(current));
+                }
+            }
+            TimeBlockResult result = null;
+            if (operation.equals("DELETE")) {
+                timeBlocks.remove(id);
+            } else {
+                var normalized = normalize(title);
+                if (normalized.isEmpty() || !printable(title)) {
+                    throw invalidBlock("title", "Укажите непустое название без невидимых символов.");
+                }
+                requireBlockTime(start, "startsAt");
+                requireBlockTime(end, "endsAt");
+                if (!start.toInstant().isBefore(end.toInstant())) {
+                    throw invalidBlock("endsAt", "Окончание должно быть позже начала.");
+                }
+                refreshBookings();
+                if (blockClosed(start.toInstant(), end.toInstant(), id)
+                        || bookings.values().stream().anyMatch(booking ->
+                                booking.getStatus() == BookingDetails.StatusEnum.CONFIRMED
+                                        && start.toInstant().isBefore(booking.getEndsAt().toInstant())
+                                        && booking.getStartsAt().toInstant().isBefore(end.toInstant()))) {
+                    throw new ApiFailure(409, new ApiError("TIME_CONFLICT",
+                            "Время занято подтверждённой встречей или другой блокировкой."));
+                }
+                var block = new TimeBlock(current == null ? randomToken() : id, normalized, start, end,
+                        current == null ? 1L : current.getVersion() + 1);
+                var affected = bookings.values().stream()
+                        .filter(booking -> booking.getStatus() == BookingDetails.StatusEnum.PENDING
+                                && start.toInstant().isBefore(booking.getEndsAt().toInstant())
+                                && booking.getStartsAt().toInstant().isBefore(end.toInstant()))
+                        .sorted(java.util.Comparator.comparing(BookingDetails::getId))
+                        .map(booking -> new AffectedBooking(booking.getId(), booking.getMeetingTypeId(),
+                                booking.getTitle(), booking.getGuestName(), booking.getStartsAt(), booking.getEndsAt(),
+                                AffectedBooking.StatusEnum.PENDING, booking.getVersion())).toList();
+                var impact = new BlockImpact(new BlockProposal(operation, id, expectedVersion, normalized,
+                        start, end, profile().getTimeZone()), affected);
+                if ((!affected.isEmpty() || token != null) && !impact.equals(blockConfirmations.get(token))) {
+                    var fresh = randomToken();
+                    blockConfirmations.put(fresh, impact);
+                    throw new ApiFailure(409, new ApiError("IMPACT_CONFIRMATION_REQUIRED",
+                            "Блокировка отклонит показанные ожидающие запросы. Подтвердите актуальные последствия.")
+                            .affectedBookings(affected).confirmationToken(fresh));
+                }
+                // Validation, hard conflicts and fresh consent precede ALL writes, under the booking monitor.
+                var rejectedIds = affected.stream().map(AffectedBooking::getId).toList();
+                for (var rejectedId : rejectedIds) {
+                    var booking = bookings.get(rejectedId);
+                    booking.setStatus(BookingDetails.StatusEnum.REJECTED);
+                    booking.setVersion(booking.getVersion() + 1);
+                    booking.setAllowedActions(List.of());
+                }
+                result = new TimeBlockResult(block, rejectedIds);
+                timeBlocks.put(block.getId(), block);
+            }
+            operations.put(key, new SavedCommand(request, result == null ? new DeletedBlock() : result, null));
+            return result;
+        } catch (ApiFailure failure) {
+            operations.put(key, new SavedCommand(request, null, failure));
+            throw failure;
+        }
+    }
+
+    private void requireBlockTime(java.time.OffsetDateTime value, String field) {
+        if (value == null || !java.time.ZoneId.of(profile().getTimeZone()).getRules()
+                .getValidOffsets(value.toLocalDateTime()).contains(value.getOffset())) {
+            throw invalidBlock(field,
+                    "Укажите существующее местное время и допустимое UTC-смещение в текущем поясе владельца.");
+        }
+    }
+
+    private ApiFailure invalidBlock(String field, String message) {
+        return new ApiFailure(422, new ApiError("VALIDATION_FAILED", "Проверьте блокировку времени.")
+                .fieldErrors(List.of(new FieldError(field, "INVALID_VALUE", message))));
+    }
 
     private record VacationCommand(String operation, String id, Object command) { }
     private record DeletedVacation() { }
@@ -1182,6 +1323,13 @@ public class OwnerState {
         if (saved.result() instanceof OutOfOffice value) {
             return new OwnerOperationResult(((VacationCommand) saved.request()).operation().equals("POST") ? 201 : 200)
                     .outOfOffice(value);
+        }
+        if (saved.result() instanceof TimeBlockResult result) {
+            return new OwnerOperationResult(((BlockCommand) saved.request()).operation().equals("POST") ? 201 : 200)
+                    .timeBlockResult(result);
+        }
+        if (saved.result() instanceof DeletedBlock) {
+            return new OwnerOperationResult(204);
         }
         if (saved.result() instanceof DeletedVacation) {
             return new OwnerOperationResult(204);

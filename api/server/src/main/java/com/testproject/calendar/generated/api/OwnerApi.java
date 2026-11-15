@@ -11,10 +11,12 @@ import com.testproject.calendar.generated.model.BookingDecisionCommand;
 import com.testproject.calendar.generated.model.BookingDetails;
 import com.testproject.calendar.generated.model.CreateMeetingTypeCommand;
 import com.testproject.calendar.generated.model.CreateOutOfOfficeCommand;
+import com.testproject.calendar.generated.model.CreateTimeBlockCommand;
 import com.testproject.calendar.generated.model.DateOverrideCommand;
 import org.springframework.format.annotation.DateTimeFormat;
 import com.testproject.calendar.generated.model.DeleteDateOverrideCommand;
 import com.testproject.calendar.generated.model.DeleteOutOfOfficeCommand;
+import com.testproject.calendar.generated.model.DeleteTimeBlockCommand;
 import com.testproject.calendar.generated.model.MeetingType;
 import com.testproject.calendar.generated.model.MeetingTypeList;
 import org.springframework.lang.Nullable;
@@ -22,12 +24,15 @@ import java.time.OffsetDateTime;
 import com.testproject.calendar.generated.model.OutOfOffice;
 import com.testproject.calendar.generated.model.OutOfOfficeList;
 import com.testproject.calendar.generated.model.OwnerBookingList;
+import com.testproject.calendar.generated.model.OwnerCalendar;
 import com.testproject.calendar.generated.model.OwnerOperationResult;
 import com.testproject.calendar.generated.model.OwnerProfile;
 import com.testproject.calendar.generated.model.ProfileCommand;
 import com.testproject.calendar.generated.model.PublicBookingCommand;
+import com.testproject.calendar.generated.model.TimeBlockResult;
 import com.testproject.calendar.generated.model.UpdateMeetingTypeCommand;
 import com.testproject.calendar.generated.model.UpdateOutOfOfficeCommand;
+import com.testproject.calendar.generated.model.UpdateTimeBlockCommand;
 import com.testproject.calendar.generated.model.WeeklyHoursCommand;
 import org.springframework.http.ResponseEntity;
 
@@ -170,6 +175,29 @@ public interface OwnerApi {
     );
 
 
+    String PATH_CREATE_TIME_BLOCK = "/api/owner/time-blocks";
+    /**
+     * POST /api/owner/time-blocks
+     *
+     * @param idempotencyKey  (required)
+     * @param createTimeBlockCommand  (required)
+     * @return The request has succeeded and a new resource has been created as a result. (status code 201)
+     *         or The server could not understand the request due to invalid syntax. (status code 400)
+     *         or The request conflicts with the current state of the server. (status code 409)
+     *         or Client error (status code 422)
+     */
+    @RequestMapping(
+        method = RequestMethod.POST,
+        value = OwnerApi.PATH_CREATE_TIME_BLOCK,
+        produces = { "application/json" },
+        consumes = { "application/json" }
+    )
+    ResponseEntity<TimeBlockResult> createTimeBlock(
+         @RequestHeader(value = "Idempotency-Key", required = true) String idempotencyKey,
+         @RequestBody CreateTimeBlockCommand createTimeBlockCommand
+    );
+
+
     String PATH_DELETE_DATE_OVERRIDE = "/api/owner/meeting-types/{id}/date-overrides/{date}";
     /**
      * DELETE /api/owner/meeting-types/{id}/date-overrides/{date}
@@ -221,6 +249,32 @@ public interface OwnerApi {
          @PathVariable("id") String id,
          @RequestHeader(value = "Idempotency-Key", required = true) String idempotencyKey,
          @RequestBody DeleteOutOfOfficeCommand deleteOutOfOfficeCommand
+    );
+
+
+    String PATH_DELETE_TIME_BLOCK = "/api/owner/time-blocks/{id}";
+    /**
+     * DELETE /api/owner/time-blocks/{id}
+     *
+     * @param id  (required)
+     * @param idempotencyKey  (required)
+     * @param deleteTimeBlockCommand  (required)
+     * @return There is no content to send for this request, but the headers may be useful.  (status code 204)
+     *         or The server could not understand the request due to invalid syntax. (status code 400)
+     *         or The server cannot find the requested resource. (status code 404)
+     *         or The request conflicts with the current state of the server. (status code 409)
+     *         or Client error (status code 422)
+     */
+    @RequestMapping(
+        method = RequestMethod.DELETE,
+        value = OwnerApi.PATH_DELETE_TIME_BLOCK,
+        produces = { "application/json" },
+        consumes = { "application/json" }
+    )
+    ResponseEntity<Void> deleteTimeBlock(
+         @PathVariable("id") String id,
+         @RequestHeader(value = "Idempotency-Key", required = true) String idempotencyKey,
+         @RequestBody DeleteTimeBlockCommand deleteTimeBlockCommand
     );
 
 
@@ -277,7 +331,7 @@ public interface OwnerApi {
         value = OwnerApi.PATH_GET_OWNER_CALENDAR,
         produces = { "application/json" }
     )
-    ResponseEntity<OwnerBookingList> getOwnerCalendar(
+    ResponseEntity<OwnerCalendar> getOwnerCalendar(
          @RequestParam(value = "from", required = true) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime from,
          @RequestParam(value = "to", required = true) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime to
     );
@@ -525,6 +579,32 @@ public interface OwnerApi {
     ResponseEntity<OwnerProfile> updateOwnerProfile(
          @RequestHeader(value = "Idempotency-Key", required = true) String idempotencyKey,
          @RequestBody ProfileCommand profileCommand
+    );
+
+
+    String PATH_UPDATE_TIME_BLOCK = "/api/owner/time-blocks/{id}";
+    /**
+     * PUT /api/owner/time-blocks/{id}
+     *
+     * @param id  (required)
+     * @param idempotencyKey  (required)
+     * @param updateTimeBlockCommand  (required)
+     * @return The request has succeeded. (status code 200)
+     *         or The server could not understand the request due to invalid syntax. (status code 400)
+     *         or The server cannot find the requested resource. (status code 404)
+     *         or The request conflicts with the current state of the server. (status code 409)
+     *         or Client error (status code 422)
+     */
+    @RequestMapping(
+        method = RequestMethod.PUT,
+        value = OwnerApi.PATH_UPDATE_TIME_BLOCK,
+        produces = { "application/json" },
+        consumes = { "application/json" }
+    )
+    ResponseEntity<TimeBlockResult> updateTimeBlock(
+         @PathVariable("id") String id,
+         @RequestHeader(value = "Idempotency-Key", required = true) String idempotencyKey,
+         @RequestBody UpdateTimeBlockCommand updateTimeBlockCommand
     );
 
 

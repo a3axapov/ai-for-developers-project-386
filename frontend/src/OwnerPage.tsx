@@ -6,6 +6,7 @@ import {
 } from './MeetingTypes';
 import { OwnerBookings } from './OwnerBookings';
 import { Vacations } from './Vacations';
+import { TimeBlocks } from './TimeBlocks';
 import {
   getOwnerProfile,
   getOwnerOperation,
@@ -26,7 +27,8 @@ export function OwnerPage() {
   const [saving, setSaving] = useState(false);
   const [typesBlocked, setMeetingBlocked] = useState(false);
   const [vacationBlocked, setVacationBlocked] = useState(false);
-  const meetingBlocked = typesBlocked || vacationBlocked;
+  const [blockBlocked, setBlockBlocked] = useState(false);
+  const meetingBlocked = typesBlocked || vacationBlocked || blockBlocked;
   const [bookingBlocked, setBookingBlocked] = useState(false);
   const [commandError, setCommandError] = useState<string>();
   const [copyMessage, setCopyMessage] = useState<string>();
@@ -403,7 +405,11 @@ export function OwnerPage() {
             onEditChange={setMeetingEdit}
             bookingUrl={state.profile.bookingUrl}
             blocked={
-              saving || Boolean(pendingKey) || bookingBlocked || vacationBlocked
+              saving ||
+              Boolean(pendingKey) ||
+              bookingBlocked ||
+              vacationBlocked ||
+              blockBlocked
             }
             draft={meetingDraft}
             onDraftChange={setMeetingDraft}
@@ -415,9 +421,27 @@ export function OwnerPage() {
           <Vacations
             timeZone={state.profile.timeZone}
             blocked={
-              saving || Boolean(pendingKey) || typesBlocked || bookingBlocked
+              saving ||
+              Boolean(pendingKey) ||
+              typesBlocked ||
+              bookingBlocked ||
+              blockBlocked
             }
             onLockChange={setVacationBlocked}
+            onProfileLoaded={(profile) =>
+              setState({ status: 'ready', profile })
+            }
+          />
+          <TimeBlocks
+            timeZone={state.profile.timeZone}
+            blocked={
+              saving ||
+              Boolean(pendingKey) ||
+              typesBlocked ||
+              vacationBlocked ||
+              bookingBlocked
+            }
+            onLockChange={setBlockBlocked}
             onProfileLoaded={(profile) =>
               setState({ status: 'ready', profile })
             }

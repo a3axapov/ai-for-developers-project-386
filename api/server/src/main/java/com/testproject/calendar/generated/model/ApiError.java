@@ -11,6 +11,7 @@ import com.testproject.calendar.generated.model.MeetingType;
 import com.testproject.calendar.generated.model.OutOfOffice;
 import com.testproject.calendar.generated.model.OwnerProfile;
 import com.testproject.calendar.generated.model.PublicMeetingType;
+import com.testproject.calendar.generated.model.TimeBlock;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -39,6 +40,8 @@ public class ApiError {
   private @Nullable MeetingType currentMeetingType;
 
   private @Nullable OutOfOffice currentOutOfOffice;
+
+  private @Nullable TimeBlock currentTimeBlock;
 
   private @Nullable PublicMeetingType currentConditions;
 
@@ -174,6 +177,25 @@ public class ApiError {
     this.currentOutOfOffice = currentOutOfOffice;
   }
 
+  public ApiError currentTimeBlock(@Nullable TimeBlock currentTimeBlock) {
+    this.currentTimeBlock = currentTimeBlock;
+    return this;
+  }
+
+  /**
+   * Get currentTimeBlock
+   * @return currentTimeBlock
+   */
+  @JsonProperty("currentTimeBlock")
+  public @Nullable TimeBlock getCurrentTimeBlock() {
+    return currentTimeBlock;
+  }
+
+  @JsonProperty("currentTimeBlock")
+  public void setCurrentTimeBlock(@Nullable TimeBlock currentTimeBlock) {
+    this.currentTimeBlock = currentTimeBlock;
+  }
+
   public ApiError currentConditions(@Nullable PublicMeetingType currentConditions) {
     this.currentConditions = currentConditions;
     return this;
@@ -281,6 +303,7 @@ public class ApiError {
         Objects.equals(this.currentBooking, apiError.currentBooking) &&
         Objects.equals(this.currentMeetingType, apiError.currentMeetingType) &&
         Objects.equals(this.currentOutOfOffice, apiError.currentOutOfOffice) &&
+        Objects.equals(this.currentTimeBlock, apiError.currentTimeBlock) &&
         Objects.equals(this.currentConditions, apiError.currentConditions) &&
         Objects.equals(this.fieldErrors, apiError.fieldErrors) &&
         Objects.equals(this.affectedBookings, apiError.affectedBookings) &&
@@ -289,7 +312,7 @@ public class ApiError {
 
   @Override
   public int hashCode() {
-    return Objects.hash(code, message, currentProfile, currentBooking, currentMeetingType, currentOutOfOffice, currentConditions, fieldErrors, affectedBookings, confirmationToken);
+    return Objects.hash(code, message, currentProfile, currentBooking, currentMeetingType, currentOutOfOffice, currentTimeBlock, currentConditions, fieldErrors, affectedBookings, confirmationToken);
   }
 
   @Override
@@ -302,6 +325,7 @@ public class ApiError {
     sb.append("    currentBooking: ").append(toIndentedString(currentBooking)).append("\n");
     sb.append("    currentMeetingType: ").append(toIndentedString(currentMeetingType)).append("\n");
     sb.append("    currentOutOfOffice: ").append(toIndentedString(currentOutOfOffice)).append("\n");
+    sb.append("    currentTimeBlock: ").append(toIndentedString(currentTimeBlock)).append("\n");
     sb.append("    currentConditions: ").append(toIndentedString(currentConditions)).append("\n");
     sb.append("    fieldErrors: ").append(toIndentedString(fieldErrors)).append("\n");
     sb.append("    affectedBookings: ").append(toIndentedString(affectedBookings)).append("\n");
