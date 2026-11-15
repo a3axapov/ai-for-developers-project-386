@@ -33,7 +33,11 @@ async function seed(request: APIRequestContext, requiresApproval = false) {
 }
 
 async function fillAndPrepare(page: Page) {
-  await page.goto('/booking/anna-1/Consult');
+  await page.goto('/booking/anna-1');
+  await page
+    .getByRole('link', { name: 'Выбрать тип «Консультация»', exact: true })
+    .click();
+  await expect(page).toHaveURL('/booking/anna-1/Consult');
   await page.getByRole('button', { name: '02.11.2026', exact: true }).click();
   await page
     .getByRole('button', {
