@@ -55,6 +55,13 @@
 - Production is one Spring Boot JAR/image serving the React bundle and `/api` on the same origin.
 - Read `docs/agents/api-packaging.md` before changing generation, controllers, packaging, or routing.
 
+## Releases
+
+- `release-please` runs on pushes to `main` and opens release pull requests from Conventional Commits.
+- Its `extra-files` update `build.gradle`, `frontend/package.json` and the workspace version in `package-lock.json`; keep `.release-please-manifest.json` as the released version. Do not edit the generated release PR version or `CHANGELOG.md` by hand.
+- Merging the release PR creates the Git tag and GitHub Release. The workflow uses `GITHUB_TOKEN` by default; an optional personal access token secret also lets later workflows run on the release pull request.
+- The repository setting “Allow GitHub Actions to create and approve pull requests” must stay enabled for `GITHUB_TOKEN` to open release pull requests.
+
 ## Environment and maintenance
 
 - Run commands from the repository root through mise. Bootstrap with `mise trust` then `mise install`.

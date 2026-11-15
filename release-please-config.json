@@ -1,0 +1,24 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "bootstrap-sha": "9fdd0e705d6878d15161250dc08618f66ff487b4",
+  "packages": {
+    ".": {
+      "release-type": "simple",
+      "package-name": "calendar",
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        "build.gradle",
+        {
+          "type": "json",
+          "path": "frontend/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "package-lock.json",
+          "jsonpath": "$.packages.frontend.version"
+        }
+      ]
+    }
+  }
+}
