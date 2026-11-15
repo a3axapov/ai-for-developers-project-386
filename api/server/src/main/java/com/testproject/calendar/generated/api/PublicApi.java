@@ -57,6 +57,26 @@ public interface PublicApi {
     );
 
 
+    String PATH_DOWNLOAD_BOOKING_CALENDAR = "/api/bookings/{accessToken}/calendar.ics";
+    /**
+     * GET /api/bookings/{accessToken}/calendar.ics
+     * Download a private RFC 5545 snapshot of a PENDING or CONFIRMED booking, including past confirmed meetings. Unknown links are neutral; rejected or cancelled bookings return ACTION_NOT_ALLOWED. The absolute result link uses the configured trusted application origin, never request headers. No guest contacts are included.
+     *
+     * @param accessToken  (required)
+     * @return The request has succeeded. (status code 200)
+     *         or The server cannot find the requested resource. (status code 404)
+     *         or The request conflicts with the current state of the server. (status code 409)
+     */
+    @RequestMapping(
+        method = RequestMethod.GET,
+        value = PublicApi.PATH_DOWNLOAD_BOOKING_CALENDAR,
+        produces = { "text/calendar; charset=utf-8", "application/json" }
+    )
+    ResponseEntity<String> downloadBookingCalendar(
+         @PathVariable("accessToken") String accessToken
+    );
+
+
     String PATH_GET_BOOKING_ATTEMPT = "/api/booking-attempts/{attemptId}";
     /**
      * GET /api/booking-attempts/{attemptId}

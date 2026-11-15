@@ -175,7 +175,7 @@ public class OwnerState {
                 type.getTitle(), type.getDescription(), type.getDurationMinutes(), type.getRequiresApproval(),
                 attempt.startsAt, attempt.startsAt.plusMinutes(type.getDurationMinutes()),
                 type.getRequiresApproval() ? BookingDetails.StatusEnum.PENDING : BookingDetails.StatusEnum.CONFIRMED,
-                attempt.guestName, attempt.guestEmail, attempt.comment, 1L, List.of("cancel"));
+                attempt.guestName, attempt.guestEmail, attempt.comment, 1L, List.of("cancel", "export"));
         var token = randomToken();
         while (resultLinks.containsKey(token)) {
             token = randomToken();
@@ -208,6 +208,22 @@ public class OwnerState {
         }
         refreshBookings();
         return bookingSnapshot(booking);
+    }
+
+    public synchronized String bookingCalendar(String token,
+            com.testproject.calendar.booking.PublicApplicationOrigin origin) {
+        var booking = resultLinks.get(token);
+        if (booking == null) {
+            throw new ApiFailure(404, new ApiError("BOOKING_NOT_FOUND", "Бронирование не найдено"));
+        }
+        var now = clock.instant();
+        refreshBookings(now);
+        if (booking.getStatus() != BookingDetails.StatusEnum.PENDING
+                && booking.getStatus() != BookingDetails.StatusEnum.CONFIRMED) {
+            throw new ApiFailure(409, new ApiError("ACTION_NOT_ALLOWED",
+                    "Экспорт недоступен для текущего статуса.").currentBooking(bookingSnapshot(booking)));
+        }
+        return com.testproject.calendar.booking.CalendarFile.render(booking, now, origin.resultUrl(token));
     }
 
     public synchronized BookingDetails ownerBooking(String id) {
@@ -481,9 +497,11 @@ public class OwnerState {
                 booking.setRejectionReason(BookingDetails.RejectionReasonEnum.APPROVAL_EXPIRED);
                 booking.setVersion(booking.getVersion() + 1);
             }
-            booking.setAllowedActions((booking.getStatus() == BookingDetails.StatusEnum.PENDING
-                    || booking.getStatus() == BookingDetails.StatusEnum.CONFIRMED)
-                    && now.isBefore(booking.getStartsAt().toInstant()) ? List.of("cancel") : List.of());
+            boolean exportable = booking.getStatus() == BookingDetails.StatusEnum.PENDING
+                    || booking.getStatus() == BookingDetails.StatusEnum.CONFIRMED;
+            booking.setAllowedActions(!exportable ? List.of()
+                    : now.isBefore(booking.getStartsAt().toInstant())
+                            ? List.of("cancel", "export") : List.of("export"));
         }
     }
 

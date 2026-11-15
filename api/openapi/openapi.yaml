@@ -149,6 +149,56 @@ paths:
                 $ref: '#/components/schemas/ApiError'
       tags:
         - Public
+  /api/bookings/{accessToken}/calendar.ics:
+    get:
+      operationId: downloadBookingCalendar
+      description: Download a private RFC 5545 snapshot of a PENDING or CONFIRMED booking, including past confirmed meetings. Unknown links are neutral; rejected or cancelled bookings return ACTION_NOT_ALLOWED. The absolute result link uses the configured trusted application origin, never request headers. No guest contacts are included.
+      parameters:
+        - name: accessToken
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The request has succeeded.
+          headers:
+            Content-Disposition:
+              required: true
+              schema:
+                type: string
+                enum:
+                  - attachment; filename="booking.ics"
+            Cache-Control:
+              required: true
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Referrer-Policy:
+              required: true
+              schema:
+                type: string
+                enum:
+                  - no-referrer
+          content:
+            text/calendar; charset=utf-8:
+              schema:
+                type: string
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: The request conflicts with the current state of the server.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      tags:
+        - Public
   /api/bookings/{accessToken}/cancel:
     post:
       operationId: cancelGuestBooking
@@ -1963,7 +2013,7 @@ components:
           type: array
           items:
             type: string
-          description: Currently contains cancel only for PENDING or CONFIRMED strictly before start. No export action is implemented yet.
+          description: Contains export for PENDING or CONFIRMED (including past CONFIRMED), and cancel only strictly before start. Rejected/cancelled bookings have no actions.
       description: Saved booking conditions and contacts with current time, status and version.
     BookingEntry:
       type: object

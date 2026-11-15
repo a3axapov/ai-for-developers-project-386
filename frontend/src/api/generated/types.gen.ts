@@ -71,7 +71,7 @@ export type BookingDetails = {
     comment: string;
     version: number;
     /**
-     * Currently contains cancel only for PENDING or CONFIRMED strictly before start. No export action is implemented yet.
+     * Contains export for PENDING or CONFIRMED (including past CONFIRMED), and cancel only strictly before start. Rejected/cancelled bookings have no actions.
      */
     allowedActions: Array<string>;
 };
@@ -529,6 +529,37 @@ export type GetBookingResultResponses = {
 };
 
 export type GetBookingResultResponse = GetBookingResultResponses[keyof GetBookingResultResponses];
+
+export type DownloadBookingCalendarData = {
+    body?: never;
+    path: {
+        accessToken: string;
+    };
+    query?: never;
+    url: '/api/bookings/{accessToken}/calendar.ics';
+};
+
+export type DownloadBookingCalendarErrors = {
+    /**
+     * The server cannot find the requested resource.
+     */
+    404: ApiError;
+    /**
+     * The request conflicts with the current state of the server.
+     */
+    409: ApiError;
+};
+
+export type DownloadBookingCalendarError = DownloadBookingCalendarErrors[keyof DownloadBookingCalendarErrors];
+
+export type DownloadBookingCalendarResponses = {
+    /**
+     * The request has succeeded.
+     */
+    200: string;
+};
+
+export type DownloadBookingCalendarResponse = DownloadBookingCalendarResponses[keyof DownloadBookingCalendarResponses];
 
 export type CancelGuestBookingData = {
     body: BookingDecisionCommand;

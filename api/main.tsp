@@ -732,7 +732,7 @@ model BookingDetails {
   comment: string;
   version: int64;
 
-  @doc("Currently contains cancel only for PENDING or CONFIRMED strictly before start. No export action is implemented yet.")
+  @doc("Contains export for PENDING or CONFIRMED (including past CONFIRMED), and cancel only strictly before start. Rejected/cancelled bookings have no actions.")
   allowedActions: string[];
 }
 
@@ -880,6 +880,25 @@ op getBookingResult(@path accessToken: string):
       @body body: BookingDetails;
     }
   | PageNotFound;
+
+@get
+@route("/bookings/{accessToken}/calendar.ics")
+@tag("Public")
+@operationId("downloadBookingCalendar")
+@doc("Download a private RFC 5545 snapshot of a PENDING or CONFIRMED booking, including past confirmed meetings. Unknown links are neutral; rejected or cancelled bookings return ACTION_NOT_ALLOWED. The absolute result link uses the configured trusted application origin, never request headers. No guest contacts are included.")
+op downloadBookingCalendar(@path accessToken: string):
+  | {
+      @header("Content-Type") contentType: "text/calendar; charset=utf-8";
+
+      @header("Content-Disposition")
+      contentDisposition: "attachment; filename=\"booking.ics\"";
+
+      @header("Cache-Control") cacheControl: "no-store";
+      @header("Referrer-Policy") referrerPolicy: "no-referrer";
+      @body body: string;
+    }
+  | PageNotFound
+  | StateConflict;
 
 @post
 @route("/bookings/{accessToken}/cancel")

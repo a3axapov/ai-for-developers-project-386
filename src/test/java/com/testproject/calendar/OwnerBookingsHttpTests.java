@@ -110,7 +110,7 @@ class OwnerBookingsHttpTests {
             var history = get(app, "/api/owner/bookings?view=history").get("items");
             assertEquals(2, history.size());
             var started = confirmed.get("booking").deepCopy();
-            ((tools.jackson.databind.node.ObjectNode) started).set("allowedActions", json.readTree("[]"));
+            ((tools.jackson.databind.node.ObjectNode) started).set("allowedActions", json.readTree("[\"export\"]"));
             assertEquals(started, history.get(1));
             assertEquals(expired, get(app, "/api/bookings/" + pending.get("resultUrl").asString()
                     .substring("/bookings/".length())));
