@@ -67,6 +67,9 @@ test('осознанная отмена сохраняет историю, ка�
   const guest = await context.newPage();
   await guest.goto(saved.resultUrl);
   const { bookings, details } = await openDetails(page);
+  const bookingList = bookings.getByRole('list', {
+    name: 'Список бронирований',
+  });
   let commands = 0;
   page.on('request', (request) => {
     if (request.method() === 'POST' && request.url().endsWith('/cancel'))
@@ -96,11 +99,11 @@ test('осознанная отмена сохраняет историю, ка�
   await expect(details.getByText('Версия: 2', { exact: true })).toBeVisible();
   await expect(cancel).toHaveCount(0);
   expect(commands).toBe(1);
-  await expect(bookings.getByRole('list').getByRole('listitem')).toHaveCount(0);
+  await expect(bookingList.getByRole('listitem')).toHaveCount(0);
   await bookings
     .getByLabel('Представление бронирований')
     .selectOption('history');
-  await expect(bookings.getByRole('list')).toContainText('Отменено');
+  await expect(bookingList).toContainText('Отменено');
   await expect(details.getByText('Сохранённый комментарий')).toBeVisible();
   await bookings
     .getByLabel('Представление бронирований')
@@ -108,7 +111,12 @@ test('осознанная отмена сохраняет историю, ка�
   await bookings.getByLabel('Начало диапазона').fill('2026-11-02T06:00:00Z');
   await bookings.getByLabel('Конец диапазона').fill('2026-11-02T06:30:00Z');
   await bookings.getByRole('button', { name: 'Показать диапазон' }).click();
-  await expect(bookings.getByRole('list')).toContainText('Отменено');
+  await expect(bookingList).toContainText('Отменено');
+  const blockList = bookings.getByRole('list', {
+    name: 'Блокировки во внутреннем календаре',
+  });
+  await expect(blockList).toHaveCount(1);
+  await expect(blockList.getByRole('listitem')).toHaveCount(0);
   await expect(guest.getByText('Подтверждено', { exact: true })).toBeVisible();
   await guest.getByRole('button', { name: 'Обновить сведения' }).click();
   await expect(guest.getByText('Отменено', { exact: true })).toBeVisible();
