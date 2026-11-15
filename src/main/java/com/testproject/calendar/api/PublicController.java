@@ -22,12 +22,24 @@ public class PublicController implements PublicApi {
     private final OwnerState owner;
     private final SlotAvailability availability;
     private final jakarta.servlet.http.HttpServletRequest request;
+    private final com.testproject.calendar.booking.PublicApplicationOrigin origin;
 
     public PublicController(OwnerState owner, SlotAvailability availability,
-            jakarta.servlet.http.HttpServletRequest request) {
+            jakarta.servlet.http.HttpServletRequest request,
+            com.testproject.calendar.booking.PublicApplicationOrigin origin) {
         this.owner = owner;
         this.availability = availability;
         this.request = request;
+        this.origin = origin;
+    }
+
+    @Override
+    public ResponseEntity<String> downloadBookingCalendar(String accessToken) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .header("Referrer-Policy", "no-referrer")
+                .header("Content-Disposition", "attachment; filename=\"booking.ics\"")
+                .contentType(org.springframework.http.MediaType.parseMediaType("text/calendar; charset=utf-8"))
+                .body(owner.bookingCalendar(accessToken, origin));
     }
 
     @Override

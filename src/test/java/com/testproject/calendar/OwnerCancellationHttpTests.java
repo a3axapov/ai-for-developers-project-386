@@ -110,7 +110,8 @@ class OwnerCancellationHttpTests {
                     assertEquals("CANCELLED", result.get("status").asString());
                     assertEquals(2, result.get("version").asInt());
                 } else {
-                    ((tools.jackson.databind.node.ObjectNode) booking).set("allowedActions", json.readTree("[]"));
+                    ((tools.jackson.databind.node.ObjectNode) booking).set("allowedActions",
+                            json.readTree("[\"export\"]"));
                     assertEquals("ACTION_NOT_ALLOWED", result.get("code").asString());
                     assertEquals(booking, result.get("currentBooking"));
                     assertEquals(booking, get(app, "/api" + saved.get("resultUrl").asString()));

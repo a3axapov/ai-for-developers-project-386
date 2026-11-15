@@ -34,7 +34,7 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: `java -jar ../build/libs/calendar.jar --server.address=127.0.0.1 --server.port=${readOnlyPort}`,
+      command: `java -jar ../build/libs/calendar.jar --server.address=127.0.0.1 --server.port=${readOnlyPort} --calendar.public-origin=${readOnlyURL}`,
       url: `${readOnlyURL}/api/health`,
       reuseExistingServer: false,
       gracefulShutdown: { signal: 'SIGTERM', timeout: 10_000 },

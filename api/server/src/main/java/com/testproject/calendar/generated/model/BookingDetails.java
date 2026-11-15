@@ -476,7 +476,7 @@ public class BookingDetails {
   }
 
   /**
-   * Currently contains cancel only for PENDING or CONFIRMED strictly before start. No export action is implemented yet.
+   * Contains export for PENDING or CONFIRMED (including past CONFIRMED), and cancel only strictly before start. Rejected/cancelled bookings have no actions.
    * @return allowedActions
    */
   @JsonProperty("allowedActions")

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   cancelGuestBooking,
+  downloadBookingCalendar,
   getBookingResult,
   type BookingDetails,
 } from './api/generated';
@@ -16,6 +17,7 @@ export function BookingResultPage({ accessToken }: { accessToken: string }) {
   const [copyMessage, setCopyMessage] = useState('');
   const [cancelling, setCancelling] = useState(false);
   const [unknownCancellation, setUnknownCancellation] = useState(false);
+  const [exporting, setExporting] = useState(false);
   useEffect(() => {
     const controller = new AbortController();
     void getBookingResult({ path: { accessToken }, signal: controller.signal })
@@ -49,6 +51,60 @@ export function BookingResultPage({ accessToken }: { accessToken: string }) {
   }, [accessToken, reload]);
   const label = (instant: string) =>
     `${dateLabel(dayKey(instant, zone))}, ${timeLabel(instant, zone)}`;
+  async function downloadCalendar() {
+    if (!booking || loading || cancelling || exporting || unknownCancellation)
+      return;
+    if (
+      !window.confirm(
+        'Файл содержит ссылку на детали и отмену бронирования. Не передавайте его посторонним.\n' +
+          (booking.status === 'PENDING'
+            ? 'Встреча предварительная: импорт не означает подтверждения владельцем.\n'
+            : '') +
+          'Это снимок, а не синхронизация. Скачать файл?',
+      )
+    )
+      return;
+    setExporting(true);
+    setError('');
+    try {
+      const result = await downloadBookingCalendar({
+        path: { accessToken },
+        parseAs: 'text',
+      });
+      if (
+        result.response?.ok &&
+        typeof result.data === 'string' &&
+        result.response.headers
+          .get('Content-Type')
+          ?.startsWith('text/calendar') &&
+        result.data.startsWith('BEGIN:VCALENDAR\r\n')
+      ) {
+        const url = URL.createObjectURL(
+          new Blob([result.data], { type: 'text/calendar;charset=utf-8' }),
+        );
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = 'booking.ics';
+        document.body.append(anchor);
+        anchor.click();
+        anchor.remove();
+        // Leave time for the browser to consume the Blob, then release it.
+        window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      } else if (result.response?.status === 404) {
+        setNotFound(true);
+        setBooking(undefined);
+      } else if (result.error?.currentBooking) {
+        setBooking(result.error.currentBooking);
+        setError(result.error.message);
+      } else {
+        setError('Не удалось скачать .ics. Повторите скачивание.');
+      }
+    } catch {
+      setError('Не удалось скачать .ics. Повторите скачивание.');
+    } finally {
+      setExporting(false);
+    }
+  }
   async function cancel() {
     if (!booking || loading || cancelling || unknownCancellation) return;
     if (
@@ -92,7 +148,11 @@ export function BookingResultPage({ accessToken }: { accessToken: string }) {
     <section className="placeholder">
       <h1>{notFound ? 'Бронирование не найдено' : 'Результат бронирования'}</h1>
       {loading && <p role="status">Загрузка сведений…</p>}
-      {error && <p role="alert">{error}</p>}
+      {error && (
+        <p id="result-error" role="alert">
+          {error}
+        </p>
+      )}
       {unknownCancellation && (
         <p role="alert">
           Исход отмены неизвестен. Обновите сведения, прежде чем явно повторить
@@ -160,10 +220,36 @@ export function BookingResultPage({ accessToken }: { accessToken: string }) {
             Уведомления не отправляются. Проверяйте актуальный статус
             самостоятельно. Восстановления ссылки по email нет.
           </p>
+          <p>
+            .ics — снимок, не подписка и не синхронизация. После изменений
+            скачайте актуальный файл; во внешнем календаре вручную обновляйте
+            или удаляйте встречу. Повторный импорт может создать дубликаты.
+            Писем с обновлениями нет.
+          </p>
+          {booking.status === 'PENDING' && (
+            <p>
+              Импорт предварительной встречи не означает подтверждения
+              владельцем.
+            </p>
+          )}
+          {booking.allowedActions.includes('export') && (
+            <button
+              className="button"
+              disabled={
+                loading || cancelling || exporting || unknownCancellation
+              }
+              aria-describedby={error ? 'result-error' : undefined}
+              onClick={() => void downloadCalendar()}
+            >
+              {exporting ? 'Скачивание .ics…' : 'Скачать .ics'}
+            </button>
+          )}
           {booking.allowedActions.includes('cancel') && (
             <button
               className="button"
-              disabled={loading || cancelling || unknownCancellation}
+              disabled={
+                loading || cancelling || exporting || unknownCancellation
+              }
               onClick={() => void cancel()}
             >
               {booking.status === 'PENDING'
@@ -192,7 +278,7 @@ export function BookingResultPage({ accessToken }: { accessToken: string }) {
       {!notFound && (
         <button
           className="button"
-          disabled={loading || cancelling}
+          disabled={loading || cancelling || exporting}
           onClick={() => {
             setLoading(true);
             setError('');

@@ -62,6 +62,7 @@ export const test = base.extend<{
         ...launcher,
         '--server.address=127.0.0.1',
         `--server.port=${mutablePort}`,
+        `--calendar.public-origin=${mutableURL}`,
         '--spring.config.additional-location=file:tests/fixtures/owner.yaml',
         `--calendar.initial.username=${ownerUsername}`,
         ...serverArguments,

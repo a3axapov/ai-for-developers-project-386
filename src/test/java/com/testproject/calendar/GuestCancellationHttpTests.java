@@ -34,16 +34,17 @@ class GuestCancellationHttpTests {
     }
 
     @Test
-    void advertisedGuestActionTracksStatusAndExactStartWithoutAdvertisingFutureExport() throws Exception {
+    void advertisedGuestActionsTrackStatusAndExactStartIncludingExport() throws Exception {
         for (boolean manual : List.of(true, false)) {
             var clock = new BookingSubmissionHttpTests.MutableClock();
             try (var app = start(clock)) {
                 var saved = book(app, manual);
-                assertEquals(json.readTree("[\"cancel\"]"), get(app, saved.path()).get("allowedActions"));
+                assertEquals(json.readTree("[\"cancel\",\"export\"]"), get(app, saved.path()).get("allowedActions"));
                 clock.set("2026-11-02T05:59:59.999999999Z");
-                assertEquals(json.readTree("[\"cancel\"]"), get(app, saved.path()).get("allowedActions"));
+                assertEquals(json.readTree("[\"cancel\",\"export\"]"), get(app, saved.path()).get("allowedActions"));
                 clock.set("2026-11-02T06:00:00Z");
-                assertEquals(json.readTree("[]"), get(app, saved.path()).get("allowedActions"));
+                assertEquals(json.readTree(manual ? "[]" : "[\"export\"]"),
+                        get(app, saved.path()).get("allowedActions"));
             }
         }
     }
