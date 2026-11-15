@@ -228,6 +228,61 @@ model OwnerCalendar {
   timeBlocks: TimeBlock[];
 }
 
+model RescheduleBookingCommand {
+  startsAt: offsetDateTime;
+  expectedVersion: int64;
+}
+
+model RescheduleSlots {
+  @doc("Inclusive local date in the current owner zone.")
+  fromDate: string;
+
+  @doc("Exclusive local date in the current owner zone. No product horizon limit.")
+  toDate: string;
+
+  ownerTimeZone: string;
+  meetingTypeTimeZone: string;
+  items: Slot[];
+}
+
+@get
+@route("/owner/bookings/{id}/reschedule-slots")
+@tag("Owner")
+@operationId("getOwnerRescheduleSlots")
+@doc("Current availability for the saved duration, excluding this booking's occupancy. Public booking need not be enabled.")
+op getOwnerRescheduleSlots(
+  @path id: string,
+  @query fromDate: string,
+  @query toDate: string,
+):
+  | {
+      @header("Cache-Control") cacheControl: "no-store";
+      @body body: RescheduleSlots;
+    }
+  | PageNotFound
+  | StateConflict
+  | InvalidData
+  | MalformedRequest;
+
+@post
+@route("/owner/bookings/{id}/reschedule")
+@tag("Owner")
+@operationId("rescheduleOwnerBooking")
+@doc("Atomically move a future PENDING/CONFIRMED booking of an active type to a strictly future available start. Retain saved conditions, status and result link; exclude own occupancy. Recheck the original start and version under the shared state lock.")
+op rescheduleOwnerBooking(
+  @path id: string,
+  @header("Idempotency-Key") idempotencyKey: IdempotencyKey,
+  @body command: RescheduleBookingCommand,
+):
+  | {
+      @header("Cache-Control") cacheControl: "no-store";
+      @body body: BookingDetails;
+    }
+  | PageNotFound
+  | StateConflict
+  | InvalidData
+  | MalformedRequest;
+
 model OutOfOffice {
   id: string;
   startDate: string;

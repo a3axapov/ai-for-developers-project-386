@@ -6,6 +6,8 @@ import com.testproject.calendar.generated.model.PreparedBookingAttempt;
 import com.testproject.calendar.generated.model.BookingAttemptResult;
 import com.testproject.calendar.generated.model.BookingDetails;
 import com.testproject.calendar.generated.model.BookingDecisionCommand;
+import com.testproject.calendar.generated.model.RescheduleBookingCommand;
+import com.testproject.calendar.generated.model.RescheduleSlots;
 import com.testproject.calendar.generated.model.SubmittedBookingAttempt;
 import com.testproject.calendar.availability.SlotAvailability;
 import com.testproject.calendar.generated.model.PublicSlots;
@@ -246,6 +248,121 @@ public class OwnerState {
     }
 
     private record BookingDecision(String id, String action, Long expectedVersion) { }
+
+    private record BookingMove(String id, java.time.OffsetDateTime startsAt, Long expectedVersion) { }
+
+    private MeetingType requireReschedulable(BookingDetails booking) {
+        if ((booking.getStatus() != BookingDetails.StatusEnum.PENDING
+                && booking.getStatus() != BookingDetails.StatusEnum.CONFIRMED)
+                || !clock.instant().isBefore(booking.getStartsAt().toInstant())) {
+            throw new ApiFailure(409, new ApiError("ACTION_NOT_ALLOWED",
+                    "Перенос недоступен для текущего статуса или времени.").currentBooking(booking));
+        }
+        var type = meetingType(booking.getMeetingTypeId());
+        if (type.getArchived()) {
+            throw new ApiFailure(409, new ApiError("ACTION_NOT_ALLOWED", "Перенос записи архивного типа недоступен.")
+                    .currentBooking(booking));
+        }
+        return type;
+    }
+
+    public synchronized RescheduleSlots rescheduleSlots(String id, String fromDate, String toDate) {
+        var current = ownerBooking(id);
+        var type = requireReschedulable(current);
+        java.time.LocalDate from;
+        java.time.LocalDate to;
+        try {
+            from = java.time.LocalDate.parse(fromDate);
+            to = java.time.LocalDate.parse(toDate);
+            if (!from.isBefore(to)) {
+                throw new java.time.DateTimeException("Empty range");
+            }
+        } catch (java.time.DateTimeException failure) {
+            throw new ApiFailure(422, new ApiError("VALIDATION_FAILED", "Проверьте диапазон дат.")
+                    .fieldErrors(List.of(new FieldError("toDate", "INVALID_VALUE",
+                            "Укажите даты YYYY-MM-DD, конец позже начала."))));
+        }
+        var zone = java.time.ZoneId.of(timeZone);
+        var start = from.atStartOfDay(zone).toInstant();
+        // Include a duration tail so starts on the last date may cross midnight.
+        var end = to.atStartOfDay(zone).toInstant();
+        var now = clock.instant();
+        var items = availability.available(type, start, end.plusSeconds(current.getDurationMinutes() * 60L),
+                current.getDurationMinutes()).stream()
+                .filter(slot -> slot.getStartsAt().toInstant().isBefore(end)
+                        && slot.getStartsAt().toInstant().isAfter(now)
+                        && !vacationClosed(slot.getStartsAt().toInstant(), slot.getEndsAt().toInstant(),
+                                vacations.values())
+                        && !occupied(slot.getStartsAt().toInstant(), slot.getEndsAt().toInstant(), id)).toList();
+        return new RescheduleSlots(fromDate, toDate, timeZone, type.getTimeZone(), items);
+    }
+
+    public synchronized BookingDetails rescheduleBooking(String key, String id, RescheduleBookingCommand command) {
+        if (!validKey(key)) {
+            throw invalidKey();
+        }
+        var request = new BookingMove(id, command.getStartsAt(), command.getExpectedVersion());
+        var saved = operations.get(key);
+        if (saved != null) {
+            if (!saved.request().equals(request)) {
+                throw new ApiFailure(409, new ApiError("IDEMPOTENCY_KEY_REUSED",
+                        "Этот ключ уже использован для другого запроса."));
+            }
+            if (saved.failure() != null) {
+                throw saved.failure();
+            }
+            return bookingSnapshot((BookingDetails) saved.result());
+        }
+        try {
+            var errors = new ArrayList<FieldError>();
+            if (command.getExpectedVersion() == null || command.getExpectedVersion() < 1) {
+                errors.add(new FieldError("expectedVersion", "INVALID_VALUE", "Укажите версию не меньше 1."));
+            }
+            if (command.getStartsAt() == null) {
+                errors.add(new FieldError("startsAt", "INVALID_VALUE", "Выберите новое время."));
+            }
+            if (!errors.isEmpty()) {
+                throw new ApiFailure(422, new ApiError("VALIDATION_FAILED", "Проверьте данные запроса.")
+                        .fieldErrors(errors));
+            }
+            var current = ownerBooking(id);
+            if (!current.getVersion().equals(command.getExpectedVersion())) {
+                throw new ApiFailure(409, new ApiError("RESOURCE_CHANGED",
+                        "Бронирование изменилось. Проверьте актуальные данные.").currentBooking(current));
+            }
+            var type = requireReschedulable(current);
+            var start = command.getStartsAt().toInstant();
+            var end = start.plusSeconds(current.getDurationMinutes() * 60L);
+            if (!start.isAfter(clock.instant()) || vacationClosed(start, end, vacations.values())
+                    || availability.available(type, start, end, current.getDurationMinutes()).isEmpty()) {
+                throw new ApiFailure(409, new ApiError("SLOT_UNAVAILABLE",
+                        "Время не соответствует текущей доступности."));
+            }
+            if (occupied(start, end, id)) {
+                throw new ApiFailure(409, new ApiError("TIME_CONFLICT", "Время уже занято."));
+            }
+            // All competing commands use this same monitor. Recheck temporal boundaries at commit.
+            current = ownerBooking(id);
+            if (!current.getVersion().equals(command.getExpectedVersion())) {
+                throw new ApiFailure(409, new ApiError("RESOURCE_CHANGED",
+                        "Бронирование изменилось. Проверьте актуальные данные.").currentBooking(current));
+            }
+            requireReschedulable(current);
+            if (!start.isAfter(clock.instant())) {
+                throw new ApiFailure(409, new ApiError("SLOT_UNAVAILABLE", "Новое начало должно быть в будущем."));
+            }
+            var booking = bookings.get(id);
+            booking.setStartsAt(command.getStartsAt());
+            booking.setEndsAt(end.atZone(java.time.ZoneId.of(type.getTimeZone())).toOffsetDateTime());
+            booking.setVersion(booking.getVersion() + 1);
+            var result = bookingSnapshot(booking);
+            operations.put(key, new SavedCommand(request, result, null));
+            return result;
+        } catch (ApiFailure failure) {
+            operations.put(key, new SavedCommand(request, null, failure));
+            throw failure;
+        }
+    }
 
     public synchronized BookingDetails decideBooking(String key, String id, String action,
             BookingDecisionCommand command) {

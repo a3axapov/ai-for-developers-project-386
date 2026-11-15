@@ -7,6 +7,7 @@ import com.testproject.calendar.generated.model.CreateMeetingTypeCommand;
 import com.testproject.calendar.generated.model.UpdateMeetingTypeCommand;
 import com.testproject.calendar.generated.model.ArchiveMeetingTypeCommand;
 import com.testproject.calendar.generated.model.BookingDecisionCommand;
+import com.testproject.calendar.generated.model.RescheduleBookingCommand;
 import com.testproject.calendar.generated.model.WeeklyHoursCommand;
 import com.testproject.calendar.generated.model.DateOverrideCommand;
 import com.testproject.calendar.generated.model.DeleteDateOverrideCommand;
@@ -50,7 +51,8 @@ public class CommandBodyAdvice extends RequestBodyAdviceAdapter {
                 || targetType == DeleteDateOverrideCommand.class || targetType == CreateOutOfOfficeCommand.class
                 || targetType == UpdateOutOfOfficeCommand.class || targetType == DeleteOutOfOfficeCommand.class
                 || targetType == CreateTimeBlockCommand.class || targetType == UpdateTimeBlockCommand.class
-                || targetType == DeleteTimeBlockCommand.class || targetType == TimeZoneCommand.class;
+                || targetType == DeleteTimeBlockCommand.class || targetType == TimeZoneCommand.class
+                || targetType == RescheduleBookingCommand.class;
     }
 
     @Override

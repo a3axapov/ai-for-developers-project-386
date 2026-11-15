@@ -509,3 +509,16 @@ h3 {
 .weekly-hours fieldset {
   min-width: 0;
 }
+.reschedule-slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  max-height: 24rem;
+  overflow: auto;
+}
+
+.reschedule-slots .button {
+  white-space: normal;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}

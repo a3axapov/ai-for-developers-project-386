@@ -326,6 +326,25 @@ export type PublicSlots = {
     items: Array<Slot>;
 };
 
+export type RescheduleBookingCommand = {
+    startsAt: string;
+    expectedVersion: number;
+};
+
+export type RescheduleSlots = {
+    /**
+     * Inclusive local date in the current owner zone.
+     */
+    fromDate: string;
+    /**
+     * Exclusive local date in the current owner zone. No product horizon limit.
+     */
+    toDate: string;
+    ownerTimeZone: string;
+    meetingTypeTimeZone: string;
+    items: Array<Slot>;
+};
+
 export type Slot = {
     /**
      * An actual start on the type-zone 15-minute grid; nonexistent local starts are skipped and repeated starts are returned separately with offsets.
@@ -750,6 +769,90 @@ export type RejectOwnerBookingResponses = {
 };
 
 export type RejectOwnerBookingResponse = RejectOwnerBookingResponses[keyof RejectOwnerBookingResponses];
+
+export type RescheduleOwnerBookingData = {
+    body: RescheduleBookingCommand;
+    headers: {
+        'Idempotency-Key': IdempotencyKey;
+    };
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/owner/bookings/{id}/reschedule';
+};
+
+export type RescheduleOwnerBookingErrors = {
+    /**
+     * The server could not understand the request due to invalid syntax.
+     */
+    400: ApiError;
+    /**
+     * The server cannot find the requested resource.
+     */
+    404: ApiError;
+    /**
+     * The request conflicts with the current state of the server.
+     */
+    409: ApiError;
+    /**
+     * Client error
+     */
+    422: ApiError;
+};
+
+export type RescheduleOwnerBookingError = RescheduleOwnerBookingErrors[keyof RescheduleOwnerBookingErrors];
+
+export type RescheduleOwnerBookingResponses = {
+    /**
+     * The request has succeeded.
+     */
+    200: BookingDetails;
+};
+
+export type RescheduleOwnerBookingResponse = RescheduleOwnerBookingResponses[keyof RescheduleOwnerBookingResponses];
+
+export type GetOwnerRescheduleSlotsData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query: {
+        fromDate: string;
+        toDate: string;
+    };
+    url: '/api/owner/bookings/{id}/reschedule-slots';
+};
+
+export type GetOwnerRescheduleSlotsErrors = {
+    /**
+     * The server could not understand the request due to invalid syntax.
+     */
+    400: ApiError;
+    /**
+     * The server cannot find the requested resource.
+     */
+    404: ApiError;
+    /**
+     * The request conflicts with the current state of the server.
+     */
+    409: ApiError;
+    /**
+     * Client error
+     */
+    422: ApiError;
+};
+
+export type GetOwnerRescheduleSlotsError = GetOwnerRescheduleSlotsErrors[keyof GetOwnerRescheduleSlotsErrors];
+
+export type GetOwnerRescheduleSlotsResponses = {
+    /**
+     * The request has succeeded.
+     */
+    200: RescheduleSlots;
+};
+
+export type GetOwnerRescheduleSlotsResponse = GetOwnerRescheduleSlotsResponses[keyof GetOwnerRescheduleSlotsResponses];
 
 export type GetOwnerCalendarData = {
     body?: never;

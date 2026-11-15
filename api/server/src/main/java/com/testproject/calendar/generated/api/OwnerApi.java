@@ -29,6 +29,8 @@ import com.testproject.calendar.generated.model.OwnerOperationResult;
 import com.testproject.calendar.generated.model.OwnerProfile;
 import com.testproject.calendar.generated.model.ProfileCommand;
 import com.testproject.calendar.generated.model.PublicBookingCommand;
+import com.testproject.calendar.generated.model.RescheduleBookingCommand;
+import com.testproject.calendar.generated.model.RescheduleSlots;
 import com.testproject.calendar.generated.model.TimeBlockResult;
 import com.testproject.calendar.generated.model.TimeZoneCommand;
 import com.testproject.calendar.generated.model.UpdateMeetingTypeCommand;
@@ -374,6 +376,32 @@ public interface OwnerApi {
     );
 
 
+    String PATH_GET_OWNER_RESCHEDULE_SLOTS = "/api/owner/bookings/{id}/reschedule-slots";
+    /**
+     * GET /api/owner/bookings/{id}/reschedule-slots
+     * Current availability for the saved duration, excluding this booking&#39;s occupancy. Public booking need not be enabled.
+     *
+     * @param id  (required)
+     * @param fromDate  (required)
+     * @param toDate  (required)
+     * @return The request has succeeded. (status code 200)
+     *         or The server could not understand the request due to invalid syntax. (status code 400)
+     *         or The server cannot find the requested resource. (status code 404)
+     *         or The request conflicts with the current state of the server. (status code 409)
+     *         or Client error (status code 422)
+     */
+    @RequestMapping(
+        method = RequestMethod.GET,
+        value = OwnerApi.PATH_GET_OWNER_RESCHEDULE_SLOTS,
+        produces = { "application/json" }
+    )
+    ResponseEntity<RescheduleSlots> getOwnerRescheduleSlots(
+         @PathVariable("id") String id,
+         @RequestParam(value = "fromDate", required = true) String fromDate,
+         @RequestParam(value = "toDate", required = true) String toDate
+    );
+
+
     String PATH_LIST_MEETING_TYPES = "/api/owner/meeting-types";
     /**
      * GET /api/owner/meeting-types
@@ -480,6 +508,33 @@ public interface OwnerApi {
          @PathVariable("id") String id,
          @RequestHeader(value = "Idempotency-Key", required = true) String idempotencyKey,
          @RequestBody BookingDecisionCommand bookingDecisionCommand
+    );
+
+
+    String PATH_RESCHEDULE_OWNER_BOOKING = "/api/owner/bookings/{id}/reschedule";
+    /**
+     * POST /api/owner/bookings/{id}/reschedule
+     * Atomically move a future PENDING/CONFIRMED booking of an active type to a strictly future available start. Retain saved conditions, status and result link; exclude own occupancy. Recheck the original start and version under the shared state lock.
+     *
+     * @param id  (required)
+     * @param idempotencyKey  (required)
+     * @param rescheduleBookingCommand  (required)
+     * @return The request has succeeded. (status code 200)
+     *         or The server could not understand the request due to invalid syntax. (status code 400)
+     *         or The server cannot find the requested resource. (status code 404)
+     *         or The request conflicts with the current state of the server. (status code 409)
+     *         or Client error (status code 422)
+     */
+    @RequestMapping(
+        method = RequestMethod.POST,
+        value = OwnerApi.PATH_RESCHEDULE_OWNER_BOOKING,
+        produces = { "application/json" },
+        consumes = { "application/json" }
+    )
+    ResponseEntity<BookingDetails> rescheduleOwnerBooking(
+         @PathVariable("id") String id,
+         @RequestHeader(value = "Idempotency-Key", required = true) String idempotencyKey,
+         @RequestBody RescheduleBookingCommand rescheduleBookingCommand
     );
 
 

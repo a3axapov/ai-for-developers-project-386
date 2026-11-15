@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import {
   confirmOwnerBooking,
   cancelOwnerBooking,
+  rescheduleOwnerBooking,
+  getMeetingType,
   rejectOwnerBooking,
   getOwnerBooking,
   getOwnerOperation,
@@ -11,8 +13,10 @@ import {
   type ApiError,
   type BookingDetails,
   type TimeBlock,
+  type Slot,
 } from './api/generated';
 import { dateLabel, dayKey, timeLabel } from './displayTime';
+import { OwnerReschedule } from './OwnerReschedule';
 
 const statusLabels = {
   PENDING: 'Ожидает подтверждения',
@@ -69,6 +73,8 @@ export function OwnerBookings({
   const [commandError, setCommandError] = useState('');
   const [pendingKey, setPendingKey] = useState<string>();
   const [operationUnavailable, setOperationUnavailable] = useState(false);
+  const [rescheduling, setRescheduling] = useState(false);
+  const [canReschedule, setCanReschedule] = useState(false);
   const locked = saving || Boolean(pendingKey);
 
   function unknownOutcome(key: string) {
@@ -79,6 +85,7 @@ export function OwnerBookings({
   }
 
   function decisionFinished(error?: ApiError) {
+    setRescheduling(false);
     setPendingKey(undefined);
     setOperationUnavailable(false);
     onLockChange(false);
@@ -141,8 +148,19 @@ export function OwnerBookings({
     }
   }
 
-  async function decideBooking(action: 'confirm' | 'reject' | 'cancel') {
+  async function decideBooking(
+    action: 'confirm' | 'reject' | 'cancel' | 'reschedule',
+    slot?: Slot,
+  ) {
     if (!details || locked || blocked || detailLoading || loading) return;
+    if (
+      action === 'reschedule' &&
+      (!slot ||
+        !window.confirm(
+          `Перенести встречу «${details.title}» с гостем ${details.guestName}? Прежнее время: ${interval(details, details.ownerTimeZone)}. Новое время: ${interval(slot, details.ownerTimeZone)} (${details.ownerTimeZone}). Сохранённые условия и статус не изменятся.`,
+        ))
+    )
+      return;
     if (
       action === 'reject' &&
       !window.confirm(
@@ -162,18 +180,29 @@ export function OwnerBookings({
     setCommandError('');
     const key = crypto.randomUUID();
     try {
-      const result = await (
-        action === 'cancel'
-          ? cancelOwnerBooking
-          : action === 'confirm'
-            ? confirmOwnerBooking
-            : rejectOwnerBooking
-      )({
-        path: { id: details.id },
-        headers: { 'Idempotency-Key': key },
-        body: { expectedVersion: details.version },
-        signal: AbortSignal.timeout(15_000),
-      });
+      const result =
+        action === 'reschedule' && slot
+          ? await rescheduleOwnerBooking({
+              path: { id: details.id },
+              headers: { 'Idempotency-Key': key },
+              body: {
+                startsAt: slot.startsAt,
+                expectedVersion: details.version,
+              },
+              signal: AbortSignal.timeout(15_000),
+            })
+          : await (
+              action === 'cancel'
+                ? cancelOwnerBooking
+                : action === 'confirm'
+                  ? confirmOwnerBooking
+                  : rejectOwnerBooking
+            )({
+              path: { id: details.id },
+              headers: { 'Idempotency-Key': key },
+              body: { expectedVersion: details.version },
+              signal: AbortSignal.timeout(15_000),
+            });
       if (result.data) decisionFinished();
       else if (
         result.response &&
@@ -197,6 +226,8 @@ export function OwnerBookings({
   }
 
   function beginDetailRead() {
+    setRescheduling(false);
+    setCanReschedule(false);
     setDetailLoading(true);
     setDetails(undefined);
     setDetailError('');
@@ -260,10 +291,17 @@ export function OwnerBookings({
       path: { id: selectedId },
       signal: controller.signal,
     })
-      .then((result) => {
+      .then(async (result) => {
         if (controller.signal.aborted) return;
-        if (result.data) setDetails(result.data);
-        else
+        if (result.data) {
+          setDetails(result.data);
+          const type = await getMeetingType({
+            path: { id: result.data.meetingTypeId },
+            signal: controller.signal,
+          });
+          if (!controller.signal.aborted)
+            setCanReschedule(type.data?.archived === false);
+        } else
           setDetailError(
             result.response && result.error?.code
               ? result.error.message
@@ -460,6 +498,32 @@ export function OwnerBookings({
               <p>{details.guestEmail}</p>
               <p className="meeting-description">{details.comment}</p>
               <p>Версия: {details.version}</p>
+              {canReschedule &&
+                (details.status === 'PENDING' ||
+                  details.status === 'CONFIRMED') &&
+                details.allowedActions.includes('cancel') && (
+                  <>
+                    <button
+                      className="button"
+                      disabled={locked || blocked || detailLoading || loading}
+                      onClick={() => setRescheduling((value) => !value)}
+                    >
+                      {rescheduling
+                        ? 'Закрыть выбор переноса'
+                        : 'Перенести встречу'}
+                    </button>
+                    {rescheduling && (
+                      <OwnerReschedule
+                        key={`${details.id}-${details.version}`}
+                        booking={details}
+                        disabled={locked || blocked || detailLoading || loading}
+                        onSubmit={(slot) =>
+                          void decideBooking('reschedule', slot)
+                        }
+                      />
+                    )}
+                  </>
+                )}
               {details.status === 'CONFIRMED' && (
                 <button
                   className="button"

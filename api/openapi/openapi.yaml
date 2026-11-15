@@ -477,6 +477,129 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/BookingDecisionCommand'
+  /api/owner/bookings/{id}/reschedule:
+    post:
+      operationId: rescheduleOwnerBooking
+      description: Atomically move a future PENDING/CONFIRMED booking of an active type to a strictly future available start. Retain saved conditions, status and result link; exclude own occupancy. Recheck the original start and version under the shared state lock.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/IdempotencyKey'
+      responses:
+        '200':
+          description: The request has succeeded.
+          headers:
+            Cache-Control:
+              required: true
+              schema:
+                type: string
+                enum:
+                  - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingDetails'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: The request conflicts with the current state of the server.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      tags:
+        - Owner
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RescheduleBookingCommand'
+  /api/owner/bookings/{id}/reschedule-slots:
+    get:
+      operationId: getOwnerRescheduleSlots
+      description: Current availability for the saved duration, excluding this booking's occupancy. Public booking need not be enabled.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: fromDate
+          in: query
+          required: true
+          schema:
+            type: string
+          explode: false
+        - name: toDate
+          in: query
+          required: true
+          schema:
+            type: string
+          explode: false
+      responses:
+        '200':
+          description: The request has succeeded.
+          headers:
+            Cache-Control:
+              required: true
+              schema:
+                type: string
+                enum:
+                  - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RescheduleSlots'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: The request conflicts with the current state of the server.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      tags:
+        - Owner
   /api/owner/calendar:
     get:
       operationId: getOwnerCalendar
@@ -2305,6 +2428,41 @@ components:
           items:
             $ref: '#/components/schemas/Slot'
       description: The complete, guest-independent actual-time window, from tomorrow 00:00 in the current owner zone for 14 calendar days. Every slot fits entirely; ending exactly at windowEnd is allowed.
+    RescheduleBookingCommand:
+      type: object
+      required:
+        - startsAt
+        - expectedVersion
+      properties:
+        startsAt:
+          type: string
+          format: date-time
+        expectedVersion:
+          type: integer
+          format: int64
+    RescheduleSlots:
+      type: object
+      required:
+        - fromDate
+        - toDate
+        - ownerTimeZone
+        - meetingTypeTimeZone
+        - items
+      properties:
+        fromDate:
+          type: string
+          description: Inclusive local date in the current owner zone.
+        toDate:
+          type: string
+          description: Exclusive local date in the current owner zone. No product horizon limit.
+        ownerTimeZone:
+          type: string
+        meetingTypeTimeZone:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Slot'
     Slot:
       type: object
       required:
