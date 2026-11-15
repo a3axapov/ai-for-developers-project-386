@@ -7,10 +7,21 @@ function docker(...args) {
 }
 
 const image = process.env.IMAGE_NAME ?? 'calendar:local';
+const containerPort = 18080;
 let container;
 try {
-  container = docker('run', '--detach', '--publish', '127.0.0.1::8080', image);
-  const port = docker('port', container, '8080/tcp').split(':').at(-1);
+  container = docker(
+    'run',
+    '--detach',
+    '--publish',
+    `127.0.0.1::${containerPort}`,
+    '--env',
+    `PORT=${containerPort}`,
+    image,
+  );
+  const port = docker('port', container, `${containerPort}/tcp`)
+    .split(':')
+    .at(-1);
   const origin = `http://127.0.0.1:${port}`;
   const health = await waitForHttp(`${origin}/api/health`);
   assert.deepEqual(await health.json(), { status: 'UP' });
