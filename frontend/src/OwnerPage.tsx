@@ -5,6 +5,7 @@ import {
   type MeetingTypeEdit,
 } from './MeetingTypes';
 import { OwnerBookings } from './OwnerBookings';
+import { Vacations } from './Vacations';
 import {
   getOwnerProfile,
   getOwnerOperation,
@@ -23,7 +24,9 @@ export function OwnerPage() {
   const [state, setState] = useState<ProfileState>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const [saving, setSaving] = useState(false);
-  const [meetingBlocked, setMeetingBlocked] = useState(false);
+  const [typesBlocked, setMeetingBlocked] = useState(false);
+  const [vacationBlocked, setVacationBlocked] = useState(false);
+  const meetingBlocked = typesBlocked || vacationBlocked;
   const [bookingBlocked, setBookingBlocked] = useState(false);
   const [commandError, setCommandError] = useState<string>();
   const [copyMessage, setCopyMessage] = useState<string>();
@@ -399,10 +402,22 @@ export function OwnerPage() {
             editing={meetingEdit}
             onEditChange={setMeetingEdit}
             bookingUrl={state.profile.bookingUrl}
-            blocked={saving || Boolean(pendingKey) || bookingBlocked}
+            blocked={
+              saving || Boolean(pendingKey) || bookingBlocked || vacationBlocked
+            }
             draft={meetingDraft}
             onDraftChange={setMeetingDraft}
             onLockChange={setMeetingBlocked}
+            onProfileLoaded={(profile) =>
+              setState({ status: 'ready', profile })
+            }
+          />
+          <Vacations
+            timeZone={state.profile.timeZone}
+            blocked={
+              saving || Boolean(pendingKey) || typesBlocked || bookingBlocked
+            }
+            onLockChange={setVacationBlocked}
             onProfileLoaded={(profile) =>
               setState({ status: 'ready', profile })
             }

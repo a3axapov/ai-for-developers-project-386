@@ -23,6 +23,10 @@ import com.testproject.calendar.generated.model.WeeklyHoursCommand;
 import com.testproject.calendar.generated.model.DateOverride;
 import com.testproject.calendar.generated.model.DateOverrideCommand;
 import com.testproject.calendar.generated.model.DeleteDateOverrideCommand;
+import com.testproject.calendar.generated.model.OutOfOffice;
+import com.testproject.calendar.generated.model.CreateOutOfOfficeCommand;
+import com.testproject.calendar.generated.model.UpdateOutOfOfficeCommand;
+import com.testproject.calendar.generated.model.DeleteOutOfOfficeCommand;
 import com.testproject.calendar.generated.model.AffectedBooking;
 import com.testproject.calendar.generated.model.WorkingDay;
 import com.testproject.calendar.generated.model.WorkingInterval;
@@ -54,6 +58,7 @@ public class OwnerState {
     private long version = 1;
     private final Map<String, SavedCommand> operations = new HashMap<>();
     private final Map<String, MeetingType> meetingTypes = new LinkedHashMap<>();
+    private final Map<String, OutOfOffice> vacations = new LinkedHashMap<>();
     private final java.security.SecureRandom random = new java.security.SecureRandom();
     private final Map<String, PreparedAttempt> attempts = new HashMap<>();
     private final Map<String, BookingDetails> bookings = new HashMap<>();
@@ -148,7 +153,8 @@ public class OwnerState {
             throw new ApiFailure(409, new ApiError("OUTSIDE_BOOKING_WINDOW",
                     "Окно записи изменилось. Выберите время заново."));
         }
-        if (slots.getItems().stream().noneMatch(slot -> slot.getStartsAt().toInstant().equals(start))) {
+        if (vacationClosed(start, end, vacations.values())
+                || slots.getItems().stream().noneMatch(slot -> slot.getStartsAt().toInstant().equals(start))) {
             throw new ApiFailure(409, new ApiError("SLOT_UNAVAILABLE",
                     "Время недоступно. Выберите время заново."));
         }
@@ -262,7 +268,8 @@ public class OwnerState {
                 var type = meetingType(current.getMeetingTypeId());
                 var start = current.getStartsAt().toInstant();
                 var end = current.getEndsAt().toInstant();
-                if (availability.available(type, start, end, current.getDurationMinutes()).isEmpty()) {
+                if (vacationClosed(start, end, vacations.values())
+                        || availability.available(type, start, end, current.getDurationMinutes()).isEmpty()) {
                     throw new ApiFailure(409, new ApiError("SLOT_UNAVAILABLE",
                             "Время не соответствует текущей доступности."));
                 }
@@ -505,6 +512,136 @@ public class OwnerState {
     private record WeeklyHoursEdit(String id, WeeklyHoursCommand command) { }
     private record DateOverrideEdit(String id, String date, Object command) { }
 
+    private record VacationCommand(String operation, String id, Object command) { }
+    private record DeletedVacation() { }
+    private record VacationProposal(String operation, String id, Long version,
+            String startDate, String endDate, String timeZone) { }
+    private record VacationImpact(VacationProposal proposal, List<AffectedBooking> bookings) { }
+    private final Map<String, VacationImpact> vacationConfirmations = new HashMap<>();
+
+    public synchronized List<OutOfOffice> vacations() {
+        return List.copyOf(vacations.values());
+    }
+
+    public synchronized OutOfOffice createVacation(String key, CreateOutOfOfficeCommand command) {
+        return editVacation(key, "POST", null, command, command.getStartDate(), command.getEndDate(), null,
+                command.getConfirmationToken());
+    }
+
+    public synchronized OutOfOffice updateVacation(String key, String id, UpdateOutOfOfficeCommand command) {
+        return editVacation(key, "PUT", id, command, command.getStartDate(), command.getEndDate(),
+                command.getExpectedVersion(), command.getConfirmationToken());
+    }
+
+    public synchronized void deleteVacation(String key, String id, DeleteOutOfOfficeCommand command) {
+        editVacation(key, "DELETE", id, command, null, null, command.getExpectedVersion(),
+                command.getConfirmationToken());
+    }
+
+    private OutOfOffice editVacation(String key, String operation, String id, Object command,
+            String startDate, String endDate, Long expectedVersion, String confirmationToken) {
+        if (!validKey(key)) {
+            throw invalidKey();
+        }
+        var request = new VacationCommand(operation, id, command);
+        var saved = operations.get(key);
+        if (saved != null) {
+            if (!saved.request().equals(request)) {
+                throw new ApiFailure(409, new ApiError("IDEMPOTENCY_KEY_REUSED",
+                        "Этот ключ уже использован для другого запроса."));
+            }
+            if (saved.failure() != null) {
+                throw saved.failure();
+            }
+            return saved.result() instanceof OutOfOffice value ? value : null;
+        }
+        try {
+            var current = id == null ? null : vacations.get(id);
+            if (id != null) {
+                requireTypeVersionValue(expectedVersion);
+                if (current == null) {
+                    throw new ApiFailure(404, new ApiError("OUT_OF_OFFICE_NOT_FOUND", "Отпуск не найден."));
+                }
+                if (!current.getVersion().equals(expectedVersion)) {
+                    throw new ApiFailure(409, new ApiError("RESOURCE_CHANGED",
+                            "Отпуск изменился. Проверьте актуальные данные.").currentOutOfOffice(current));
+                }
+            }
+            OutOfOffice result = null;
+            if (!operation.equals("DELETE")) {
+                var start = vacationDate(startDate, "startDate");
+                var end = vacationDate(endDate, "endDate");
+                if (start.isAfter(end)) {
+                    throw invalidHours("endDate", "Конечная дата не может быть раньше начальной.");
+                }
+                result = new OutOfOffice(current == null ? randomToken() : id, startDate, endDate,
+                        current == null ? profile().getTimeZone() : current.getTimeZone(),
+                        current == null ? 1L : current.getVersion() + 1);
+            }
+            var proposal = new ArrayList<>(vacations.values().stream()
+                    .filter(value -> !value.getId().equals(id)).toList());
+            if (result != null) {
+                proposal.add(result);
+            }
+            requireVacationConsent(new VacationProposal(operation, id, expectedVersion, startDate, endDate,
+                    result == null ? current.getTimeZone() : result.getTimeZone()), proposal, confirmationToken);
+            if (result == null) {
+                vacations.remove(id);
+            } else {
+                vacations.put(result.getId(), result);
+            }
+            operations.put(key, new SavedCommand(request, result == null ? new DeletedVacation() : result, null));
+            return result;
+        } catch (ApiFailure failure) {
+            operations.put(key, new SavedCommand(request, null, failure));
+            throw failure;
+        }
+    }
+
+    private java.time.LocalDate vacationDate(String date, String field) {
+        try {
+            if (date == null || !date.matches("[0-9]{4}-[0-9]{2}-[0-9]{2}")) {
+                throw new java.time.DateTimeException("Invalid date");
+            }
+            return java.time.LocalDate.parse(date);
+        } catch (java.time.DateTimeException exception) {
+            throw invalidHours(field, "Укажите существующую дату ГГГГ-ММ-ДД.");
+        }
+    }
+
+    private void requireVacationConsent(VacationProposal proposal, List<OutOfOffice> values, String token) {
+        var now = clock.instant();
+        refreshBookings(now);
+        var affected = bookings.values().stream()
+                .filter(booking -> booking.getStartsAt().toInstant().isAfter(now)
+                        && (booking.getStatus() == BookingDetails.StatusEnum.PENDING
+                        || booking.getStatus() == BookingDetails.StatusEnum.CONFIRMED))
+                .filter(booking -> fitsHours(meetingType(booking.getMeetingTypeId()), booking)
+                        && vacationClosed(booking.getStartsAt().toInstant(), booking.getEndsAt().toInstant(), values))
+                .sorted(java.util.Comparator.comparing(booking -> booking.getStartsAt().toInstant()))
+                .map(booking -> new AffectedBooking(booking.getId(), booking.getMeetingTypeId(),
+                        booking.getTitle(), booking.getGuestName(), booking.getStartsAt(), booking.getEndsAt(),
+                        AffectedBooking.StatusEnum.valueOf(booking.getStatus().name()), booking.getVersion())).toList();
+        var impact = new VacationImpact(proposal, affected);
+        if ((!affected.isEmpty() || token != null) && !impact.equals(vacationConfirmations.get(token))) {
+            var fresh = randomToken();
+            vacationConfirmations.put(fresh, impact);
+            throw new ApiFailure(409, new ApiError("IMPACT_CONFIRMATION_REQUIRED",
+                    "Изменение закроет время показанных бронирований. Они не будут отменены или перенесены.")
+                    .affectedBookings(affected).confirmationToken(fresh));
+        }
+    }
+
+    private boolean vacationClosed(java.time.Instant start, java.time.Instant end,
+            java.util.Collection<OutOfOffice> values) {
+        return values.stream().anyMatch(value -> {
+            var zone = java.time.ZoneId.of(value.getTimeZone());
+            var from = java.time.LocalDate.parse(value.getStartDate()).atStartOfDay(zone).toInstant();
+            var to = java.time.LocalDate.parse(value.getEndDate()).plusDays(1).atStartOfDay(zone).toInstant();
+            return from.isBefore(to) && start.isBefore(to) && from.isBefore(end);
+        });
+    }
+
     public synchronized MeetingType editDateOverride(String key, String id, String date, DateOverrideCommand command) {
         return editDateOverride(key, id, date, command, command.getExpectedVersion(), command.getIntervals(),
                 command.getConfirmationToken());
@@ -635,7 +772,8 @@ public class OwnerState {
     }
 
     private boolean fitsHours(MeetingType type, BookingDetails booking) {
-        return !availability.available(type, booking.getStartsAt().toInstant(), booking.getEndsAt().toInstant(),
+        return !vacationClosed(booking.getStartsAt().toInstant(), booking.getEndsAt().toInstant(), vacations.values())
+                && !availability.available(type, booking.getStartsAt().toInstant(), booking.getEndsAt().toInstant(),
                 booking.getDurationMinutes()).isEmpty();
     }
 
@@ -877,7 +1015,9 @@ public class OwnerState {
             throw new ApiFailure(409, new ApiError("TYPE_ARCHIVED", "Запись на этот тип встречи прекращена"));
         }
         var slots = availability.slots(type, profile().getTimeZone(), conditionsToken(type));
-        slots.setItems(slots.getItems().stream().filter(slot -> !occupied(
+        slots.setItems(slots.getItems().stream().filter(slot -> !vacationClosed(
+                slot.getStartsAt().toInstant(), slot.getEndsAt().toInstant(), vacations.values()))
+                .filter(slot -> !occupied(
                 slot.getStartsAt().toInstant(), slot.getEndsAt().toInstant())).toList());
         return slots;
     }
@@ -1038,6 +1178,13 @@ public class OwnerState {
         if (saved.result() instanceof MeetingType type) {
             return new OwnerOperationResult(saved.request() instanceof CreateMeetingTypeCommand ? 201 : 200)
                     .meetingType(type);
+        }
+        if (saved.result() instanceof OutOfOffice value) {
+            return new OwnerOperationResult(((VacationCommand) saved.request()).operation().equals("POST") ? 201 : 200)
+                    .outOfOffice(value);
+        }
+        if (saved.result() instanceof DeletedVacation) {
+            return new OwnerOperationResult(204);
         }
         if (saved.result() instanceof BookingDetails booking) {
             return new OwnerOperationResult(200).booking(bookingSnapshot(booking));

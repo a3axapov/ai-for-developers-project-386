@@ -7,6 +7,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.testproject.calendar.generated.model.ApiError;
 import com.testproject.calendar.generated.model.BookingDetails;
 import com.testproject.calendar.generated.model.MeetingType;
+import com.testproject.calendar.generated.model.OutOfOffice;
 import com.testproject.calendar.generated.model.OwnerProfile;
 import org.springframework.lang.Nullable;
 import java.time.OffsetDateTime;
@@ -27,6 +28,8 @@ public class OwnerOperationResult {
   private @Nullable OwnerProfile profile;
 
   private @Nullable MeetingType meetingType;
+
+  private @Nullable OutOfOffice outOfOffice;
 
   private @Nullable BookingDetails booking;
 
@@ -100,6 +103,25 @@ public class OwnerOperationResult {
     this.meetingType = meetingType;
   }
 
+  public OwnerOperationResult outOfOffice(@Nullable OutOfOffice outOfOffice) {
+    this.outOfOffice = outOfOffice;
+    return this;
+  }
+
+  /**
+   * Get outOfOffice
+   * @return outOfOffice
+   */
+  @JsonProperty("outOfOffice")
+  public @Nullable OutOfOffice getOutOfOffice() {
+    return outOfOffice;
+  }
+
+  @JsonProperty("outOfOffice")
+  public void setOutOfOffice(@Nullable OutOfOffice outOfOffice) {
+    this.outOfOffice = outOfOffice;
+  }
+
   public OwnerOperationResult booking(@Nullable BookingDetails booking) {
     this.booking = booking;
     return this;
@@ -150,13 +172,14 @@ public class OwnerOperationResult {
     return Objects.equals(this.statusCode, ownerOperationResult.statusCode) &&
         Objects.equals(this.profile, ownerOperationResult.profile) &&
         Objects.equals(this.meetingType, ownerOperationResult.meetingType) &&
+        Objects.equals(this.outOfOffice, ownerOperationResult.outOfOffice) &&
         Objects.equals(this.booking, ownerOperationResult.booking) &&
         Objects.equals(this.error, ownerOperationResult.error);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(statusCode, profile, meetingType, booking, error);
+    return Objects.hash(statusCode, profile, meetingType, outOfOffice, booking, error);
   }
 
   @Override
@@ -166,6 +189,7 @@ public class OwnerOperationResult {
     sb.append("    statusCode: ").append(toIndentedString(statusCode)).append("\n");
     sb.append("    profile: ").append(toIndentedString(profile)).append("\n");
     sb.append("    meetingType: ").append(toIndentedString(meetingType)).append("\n");
+    sb.append("    outOfOffice: ").append(toIndentedString(outOfOffice)).append("\n");
     sb.append("    booking: ").append(toIndentedString(booking)).append("\n");
     sb.append("    error: ").append(toIndentedString(error)).append("\n");
     sb.append("}");

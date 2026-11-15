@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { ArchiveMeetingTypeData, ArchiveMeetingTypeErrors, ArchiveMeetingTypeResponses, CancelGuestBookingData, CancelGuestBookingErrors, CancelGuestBookingResponses, CancelOwnerBookingData, CancelOwnerBookingErrors, CancelOwnerBookingResponses, ConfirmOwnerBookingData, ConfirmOwnerBookingErrors, ConfirmOwnerBookingResponses, CreateMeetingTypeData, CreateMeetingTypeErrors, CreateMeetingTypeResponses, DeleteDateOverrideData, DeleteDateOverrideErrors, DeleteDateOverrideResponses, GetBookingAttemptData, GetBookingAttemptErrors, GetBookingAttemptResponses, GetBookingEntryData, GetBookingEntryResponses, GetBookingResultData, GetBookingResultErrors, GetBookingResultResponses, GetHealthData, GetHealthResponses, GetMeetingTypeData, GetMeetingTypeErrors, GetMeetingTypeResponses, GetOwnerBookingData, GetOwnerBookingErrors, GetOwnerBookingResponses, GetOwnerCalendarData, GetOwnerCalendarErrors, GetOwnerCalendarResponses, GetOwnerOperationData, GetOwnerOperationErrors, GetOwnerOperationResponses, GetOwnerProfileData, GetOwnerProfileResponses, GetPublicBookingPageData, GetPublicBookingPageErrors, GetPublicBookingPageResponses, GetPublicMeetingTypeData, GetPublicMeetingTypeErrors, GetPublicMeetingTypeResponses, GetPublicSlotsData, GetPublicSlotsErrors, GetPublicSlotsResponses, ListMeetingTypesData, ListMeetingTypesResponses, ListOwnerBookingsData, ListOwnerBookingsErrors, ListOwnerBookingsResponses, PrepareBookingAttemptData, PrepareBookingAttemptErrors, PrepareBookingAttemptResponses, PutDateOverrideData, PutDateOverrideErrors, PutDateOverrideResponses, RejectOwnerBookingData, RejectOwnerBookingErrors, RejectOwnerBookingResponses, SetPublicBookingData, SetPublicBookingErrors, SetPublicBookingResponses, SubmitBookingAttemptData, SubmitBookingAttemptErrors, SubmitBookingAttemptResponses, UpdateMeetingTypeData, UpdateMeetingTypeErrors, UpdateMeetingTypeResponses, UpdateOwnerProfileData, UpdateOwnerProfileErrors, UpdateOwnerProfileResponses, UpdateWeeklyHoursData, UpdateWeeklyHoursErrors, UpdateWeeklyHoursResponses } from './types.gen';
+import type { ArchiveMeetingTypeData, ArchiveMeetingTypeErrors, ArchiveMeetingTypeResponses, CancelGuestBookingData, CancelGuestBookingErrors, CancelGuestBookingResponses, CancelOwnerBookingData, CancelOwnerBookingErrors, CancelOwnerBookingResponses, ConfirmOwnerBookingData, ConfirmOwnerBookingErrors, ConfirmOwnerBookingResponses, CreateMeetingTypeData, CreateMeetingTypeErrors, CreateMeetingTypeResponses, CreateOutOfOfficeData, CreateOutOfOfficeErrors, CreateOutOfOfficeResponses, DeleteDateOverrideData, DeleteDateOverrideErrors, DeleteDateOverrideResponses, DeleteOutOfOfficeData, DeleteOutOfOfficeErrors, DeleteOutOfOfficeResponses, GetBookingAttemptData, GetBookingAttemptErrors, GetBookingAttemptResponses, GetBookingEntryData, GetBookingEntryResponses, GetBookingResultData, GetBookingResultErrors, GetBookingResultResponses, GetHealthData, GetHealthResponses, GetMeetingTypeData, GetMeetingTypeErrors, GetMeetingTypeResponses, GetOwnerBookingData, GetOwnerBookingErrors, GetOwnerBookingResponses, GetOwnerCalendarData, GetOwnerCalendarErrors, GetOwnerCalendarResponses, GetOwnerOperationData, GetOwnerOperationErrors, GetOwnerOperationResponses, GetOwnerProfileData, GetOwnerProfileResponses, GetPublicBookingPageData, GetPublicBookingPageErrors, GetPublicBookingPageResponses, GetPublicMeetingTypeData, GetPublicMeetingTypeErrors, GetPublicMeetingTypeResponses, GetPublicSlotsData, GetPublicSlotsErrors, GetPublicSlotsResponses, ListMeetingTypesData, ListMeetingTypesResponses, ListOutOfOfficeData, ListOutOfOfficeResponses, ListOwnerBookingsData, ListOwnerBookingsErrors, ListOwnerBookingsResponses, PrepareBookingAttemptData, PrepareBookingAttemptErrors, PrepareBookingAttemptResponses, PutDateOverrideData, PutDateOverrideErrors, PutDateOverrideResponses, RejectOwnerBookingData, RejectOwnerBookingErrors, RejectOwnerBookingResponses, SetPublicBookingData, SetPublicBookingErrors, SetPublicBookingResponses, SubmitBookingAttemptData, SubmitBookingAttemptErrors, SubmitBookingAttemptResponses, UpdateMeetingTypeData, UpdateMeetingTypeErrors, UpdateMeetingTypeResponses, UpdateOutOfOfficeData, UpdateOutOfOfficeErrors, UpdateOutOfOfficeResponses, UpdateOwnerProfileData, UpdateOwnerProfileErrors, UpdateOwnerProfileResponses, UpdateWeeklyHoursData, UpdateWeeklyHoursErrors, UpdateWeeklyHoursResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -163,6 +163,35 @@ export const updateWeeklyHours = <ThrowOnError extends boolean = false>(options:
  * Recover the saved result without executing the command again.
  */
 export const getOwnerOperation = <ThrowOnError extends boolean = false>(options: Options<GetOwnerOperationData, ThrowOnError>): RequestResult<GetOwnerOperationResponses, GetOwnerOperationErrors, ThrowOnError> => (options.client ?? client).get<GetOwnerOperationResponses, GetOwnerOperationErrors, ThrowOnError>({ url: '/api/owner/operations/{key}', ...options });
+
+export const listOutOfOffice = <ThrowOnError extends boolean = false>(options?: Options<ListOutOfOfficeData, ThrowOnError>): RequestResult<ListOutOfOfficeResponses, unknown, ThrowOnError> => (options?.client ?? client).get<ListOutOfOfficeResponses, unknown, ThrowOnError>({ url: '/api/owner/out-of-office', ...options });
+
+export const createOutOfOffice = <ThrowOnError extends boolean = false>(options: Options<CreateOutOfOfficeData, ThrowOnError>): RequestResult<CreateOutOfOfficeResponses, CreateOutOfOfficeErrors, ThrowOnError> => (options.client ?? client).post<CreateOutOfOfficeResponses, CreateOutOfOfficeErrors, ThrowOnError>({
+    url: '/api/owner/out-of-office',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+export const deleteOutOfOffice = <ThrowOnError extends boolean = false>(options: Options<DeleteOutOfOfficeData, ThrowOnError>): RequestResult<DeleteOutOfOfficeResponses, DeleteOutOfOfficeErrors, ThrowOnError> => (options.client ?? client).delete<DeleteOutOfOfficeResponses, DeleteOutOfOfficeErrors, ThrowOnError>({
+    url: '/api/owner/out-of-office/{id}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+export const updateOutOfOffice = <ThrowOnError extends boolean = false>(options: Options<UpdateOutOfOfficeData, ThrowOnError>): RequestResult<UpdateOutOfOfficeResponses, UpdateOutOfOfficeErrors, ThrowOnError> => (options.client ?? client).put<UpdateOutOfOfficeResponses, UpdateOutOfOfficeErrors, ThrowOnError>({
+    url: '/api/owner/out-of-office/{id}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
 
 /**
  * Read the calendar owner's profile.

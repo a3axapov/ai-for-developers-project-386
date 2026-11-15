@@ -111,6 +111,95 @@ op updateMeetingType(
   | InvalidData
   | MalformedRequest;
 
+model OutOfOffice {
+  id: string;
+  startDate: string;
+  endDate: string;
+  timeZone: string;
+  version: int64;
+}
+
+model OutOfOfficeList {
+  items: OutOfOffice[];
+}
+
+model CreateOutOfOfficeCommand {
+  startDate: string;
+  endDate: string;
+  confirmationToken?: string;
+}
+
+model UpdateOutOfOfficeCommand extends CreateOutOfOfficeCommand {
+  expectedVersion: int64;
+}
+
+model DeleteOutOfOfficeCommand {
+  expectedVersion: int64;
+  confirmationToken?: string;
+}
+
+@get
+@route("/owner/out-of-office")
+@tag("Owner")
+@operationId("listOutOfOffice")
+op listOutOfOffice(): {
+  @header("Cache-Control") cacheControl: "no-store";
+  @body body: OutOfOfficeList;
+};
+
+@post
+@route("/owner/out-of-office")
+@tag("Owner")
+@operationId("createOutOfOffice")
+op createOutOfOffice(
+  @header("Idempotency-Key") idempotencyKey: IdempotencyKey,
+  @body command: CreateOutOfOfficeCommand,
+):
+  | {
+      @statusCode statusCode: 201;
+      @header("Cache-Control") cacheControl: "no-store";
+      @body body: OutOfOffice;
+    }
+  | StateConflict
+  | InvalidData
+  | MalformedRequest;
+
+@put
+@route("/owner/out-of-office/{id}")
+@tag("Owner")
+@operationId("updateOutOfOffice")
+op updateOutOfOffice(
+  @path id: string,
+  @header("Idempotency-Key") idempotencyKey: IdempotencyKey,
+  @body command: UpdateOutOfOfficeCommand,
+):
+  | {
+      @header("Cache-Control") cacheControl: "no-store";
+      @body body: OutOfOffice;
+    }
+  | PageNotFound
+  | StateConflict
+  | InvalidData
+  | MalformedRequest;
+
+@delete
+@route("/owner/out-of-office/{id}")
+@tag("Owner")
+@operationId("deleteOutOfOffice")
+op deleteOutOfOffice(
+  @path id: string,
+  @header("Idempotency-Key") idempotencyKey: IdempotencyKey,
+  @body command: DeleteOutOfOfficeCommand,
+):
+  | {
+      @statusCode statusCode: 204;
+      @header("Cache-Control") cacheControl: "no-store";
+    }
+  | PageNotFound
+  | StateConflict
+  | InvalidData
+  | MalformedRequest;
+
 model WorkingInterval {
   start: string;
   end: string;
@@ -270,6 +359,7 @@ model ApiError {
   currentProfile?: OwnerProfile;
   currentBooking?: BookingDetails;
   currentMeetingType?: MeetingType;
+  currentOutOfOffice?: OutOfOffice;
   currentConditions?: PublicMeetingType;
   fieldErrors?: FieldError[];
   affectedBookings?: AffectedBooking[];
@@ -732,6 +822,7 @@ model OwnerOperationResult {
   statusCode: int32;
   profile?: OwnerProfile;
   meetingType?: MeetingType;
+  outOfOffice?: OutOfOffice;
   booking?: BookingDetails;
   error?: ApiError;
 }

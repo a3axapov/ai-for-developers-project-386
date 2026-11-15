@@ -10,19 +10,24 @@ import com.testproject.calendar.generated.model.ArchiveMeetingTypeCommand;
 import com.testproject.calendar.generated.model.BookingDecisionCommand;
 import com.testproject.calendar.generated.model.BookingDetails;
 import com.testproject.calendar.generated.model.CreateMeetingTypeCommand;
+import com.testproject.calendar.generated.model.CreateOutOfOfficeCommand;
 import com.testproject.calendar.generated.model.DateOverrideCommand;
 import org.springframework.format.annotation.DateTimeFormat;
 import com.testproject.calendar.generated.model.DeleteDateOverrideCommand;
+import com.testproject.calendar.generated.model.DeleteOutOfOfficeCommand;
 import com.testproject.calendar.generated.model.MeetingType;
 import com.testproject.calendar.generated.model.MeetingTypeList;
 import org.springframework.lang.Nullable;
 import java.time.OffsetDateTime;
+import com.testproject.calendar.generated.model.OutOfOffice;
+import com.testproject.calendar.generated.model.OutOfOfficeList;
 import com.testproject.calendar.generated.model.OwnerBookingList;
 import com.testproject.calendar.generated.model.OwnerOperationResult;
 import com.testproject.calendar.generated.model.OwnerProfile;
 import com.testproject.calendar.generated.model.ProfileCommand;
 import com.testproject.calendar.generated.model.PublicBookingCommand;
 import com.testproject.calendar.generated.model.UpdateMeetingTypeCommand;
+import com.testproject.calendar.generated.model.UpdateOutOfOfficeCommand;
 import com.testproject.calendar.generated.model.WeeklyHoursCommand;
 import org.springframework.http.ResponseEntity;
 
@@ -142,6 +147,29 @@ public interface OwnerApi {
     );
 
 
+    String PATH_CREATE_OUT_OF_OFFICE = "/api/owner/out-of-office";
+    /**
+     * POST /api/owner/out-of-office
+     *
+     * @param idempotencyKey  (required)
+     * @param createOutOfOfficeCommand  (required)
+     * @return The request has succeeded and a new resource has been created as a result. (status code 201)
+     *         or The server could not understand the request due to invalid syntax. (status code 400)
+     *         or The request conflicts with the current state of the server. (status code 409)
+     *         or Client error (status code 422)
+     */
+    @RequestMapping(
+        method = RequestMethod.POST,
+        value = OwnerApi.PATH_CREATE_OUT_OF_OFFICE,
+        produces = { "application/json" },
+        consumes = { "application/json" }
+    )
+    ResponseEntity<OutOfOffice> createOutOfOffice(
+         @RequestHeader(value = "Idempotency-Key", required = true) String idempotencyKey,
+         @RequestBody CreateOutOfOfficeCommand createOutOfOfficeCommand
+    );
+
+
     String PATH_DELETE_DATE_OVERRIDE = "/api/owner/meeting-types/{id}/date-overrides/{date}";
     /**
      * DELETE /api/owner/meeting-types/{id}/date-overrides/{date}
@@ -167,6 +195,32 @@ public interface OwnerApi {
          @PathVariable("date") String date,
          @RequestHeader(value = "Idempotency-Key", required = true) String idempotencyKey,
          @RequestBody DeleteDateOverrideCommand deleteDateOverrideCommand
+    );
+
+
+    String PATH_DELETE_OUT_OF_OFFICE = "/api/owner/out-of-office/{id}";
+    /**
+     * DELETE /api/owner/out-of-office/{id}
+     *
+     * @param id  (required)
+     * @param idempotencyKey  (required)
+     * @param deleteOutOfOfficeCommand  (required)
+     * @return There is no content to send for this request, but the headers may be useful.  (status code 204)
+     *         or The server could not understand the request due to invalid syntax. (status code 400)
+     *         or The server cannot find the requested resource. (status code 404)
+     *         or The request conflicts with the current state of the server. (status code 409)
+     *         or Client error (status code 422)
+     */
+    @RequestMapping(
+        method = RequestMethod.DELETE,
+        value = OwnerApi.PATH_DELETE_OUT_OF_OFFICE,
+        produces = { "application/json" },
+        consumes = { "application/json" }
+    )
+    ResponseEntity<Void> deleteOutOfOffice(
+         @PathVariable("id") String id,
+         @RequestHeader(value = "Idempotency-Key", required = true) String idempotencyKey,
+         @RequestBody DeleteOutOfOfficeCommand deleteOutOfOfficeCommand
     );
 
 
@@ -277,6 +331,22 @@ public interface OwnerApi {
         produces = { "application/json" }
     )
     ResponseEntity<MeetingTypeList> listMeetingTypes(
+        
+    );
+
+
+    String PATH_LIST_OUT_OF_OFFICE = "/api/owner/out-of-office";
+    /**
+     * GET /api/owner/out-of-office
+     *
+     * @return The request has succeeded. (status code 200)
+     */
+    @RequestMapping(
+        method = RequestMethod.GET,
+        value = OwnerApi.PATH_LIST_OUT_OF_OFFICE,
+        produces = { "application/json" }
+    )
+    ResponseEntity<OutOfOfficeList> listOutOfOffice(
         
     );
 
@@ -405,6 +475,32 @@ public interface OwnerApi {
          @PathVariable("id") String id,
          @RequestHeader(value = "Idempotency-Key", required = true) String idempotencyKey,
          @RequestBody UpdateMeetingTypeCommand updateMeetingTypeCommand
+    );
+
+
+    String PATH_UPDATE_OUT_OF_OFFICE = "/api/owner/out-of-office/{id}";
+    /**
+     * PUT /api/owner/out-of-office/{id}
+     *
+     * @param id  (required)
+     * @param idempotencyKey  (required)
+     * @param updateOutOfOfficeCommand  (required)
+     * @return The request has succeeded. (status code 200)
+     *         or The server could not understand the request due to invalid syntax. (status code 400)
+     *         or The server cannot find the requested resource. (status code 404)
+     *         or The request conflicts with the current state of the server. (status code 409)
+     *         or Client error (status code 422)
+     */
+    @RequestMapping(
+        method = RequestMethod.PUT,
+        value = OwnerApi.PATH_UPDATE_OUT_OF_OFFICE,
+        produces = { "application/json" },
+        consumes = { "application/json" }
+    )
+    ResponseEntity<OutOfOffice> updateOutOfOffice(
+         @PathVariable("id") String id,
+         @RequestHeader(value = "Idempotency-Key", required = true) String idempotencyKey,
+         @RequestBody UpdateOutOfOfficeCommand updateOutOfOfficeCommand
     );
 
 

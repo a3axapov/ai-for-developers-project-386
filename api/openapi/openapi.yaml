@@ -963,6 +963,189 @@ paths:
                 $ref: '#/components/schemas/ApiError'
       tags:
         - Owner
+  /api/owner/out-of-office:
+    get:
+      operationId: listOutOfOffice
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          headers:
+            Cache-Control:
+              required: true
+              schema:
+                type: string
+                enum:
+                  - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OutOfOfficeList'
+      tags:
+        - Owner
+    post:
+      operationId: createOutOfOffice
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/IdempotencyKey'
+      responses:
+        '201':
+          description: The request has succeeded and a new resource has been created as a result.
+          headers:
+            Cache-Control:
+              required: true
+              schema:
+                type: string
+                enum:
+                  - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OutOfOffice'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: The request conflicts with the current state of the server.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      tags:
+        - Owner
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOutOfOfficeCommand'
+  /api/owner/out-of-office/{id}:
+    put:
+      operationId: updateOutOfOffice
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/IdempotencyKey'
+      responses:
+        '200':
+          description: The request has succeeded.
+          headers:
+            Cache-Control:
+              required: true
+              schema:
+                type: string
+                enum:
+                  - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OutOfOffice'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: The request conflicts with the current state of the server.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      tags:
+        - Owner
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateOutOfOfficeCommand'
+    delete:
+      operationId: deleteOutOfOffice
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/IdempotencyKey'
+      responses:
+        '204':
+          description: 'There is no content to send for this request, but the headers may be useful. '
+          headers:
+            Cache-Control:
+              required: true
+              schema:
+                type: string
+                enum:
+                  - no-store
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: The request conflicts with the current state of the server.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      tags:
+        - Owner
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteOutOfOfficeCommand'
   /api/owner/profile:
     get:
       operationId: getOwnerProfile
@@ -1325,6 +1508,8 @@ components:
           $ref: '#/components/schemas/BookingDetails'
         currentMeetingType:
           $ref: '#/components/schemas/MeetingType'
+        currentOutOfOffice:
+          $ref: '#/components/schemas/OutOfOffice'
         currentConditions:
           $ref: '#/components/schemas/PublicMeetingType'
         fieldErrors:
@@ -1471,6 +1656,18 @@ components:
         requiresApproval:
           type: boolean
           default: false
+    CreateOutOfOfficeCommand:
+      type: object
+      required:
+        - startDate
+        - endDate
+      properties:
+        startDate:
+          type: string
+        endDate:
+          type: string
+        confirmationToken:
+          type: string
     DateOverride:
       type: object
       required:
@@ -1500,6 +1697,16 @@ components:
         confirmationToken:
           type: string
     DeleteDateOverrideCommand:
+      type: object
+      required:
+        - expectedVersion
+      properties:
+        expectedVersion:
+          type: integer
+          format: int64
+        confirmationToken:
+          type: string
+    DeleteOutOfOfficeCommand:
       type: object
       required:
         - expectedVersion
@@ -1588,6 +1795,35 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/MeetingType'
+    OutOfOffice:
+      type: object
+      required:
+        - id
+        - startDate
+        - endDate
+        - timeZone
+        - version
+      properties:
+        id:
+          type: string
+        startDate:
+          type: string
+        endDate:
+          type: string
+        timeZone:
+          type: string
+        version:
+          type: integer
+          format: int64
+    OutOfOfficeList:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OutOfOffice'
     OwnerBookingList:
       type: object
       required:
@@ -1610,6 +1846,8 @@ components:
           $ref: '#/components/schemas/OwnerProfile'
         meetingType:
           $ref: '#/components/schemas/MeetingType'
+        outOfOffice:
+          $ref: '#/components/schemas/OutOfOffice'
         booking:
           $ref: '#/components/schemas/BookingDetails'
         error:
@@ -1859,6 +2097,16 @@ components:
         expectedVersion:
           type: integer
           format: int64
+    UpdateOutOfOfficeCommand:
+      type: object
+      required:
+        - expectedVersion
+      properties:
+        expectedVersion:
+          type: integer
+          format: int64
+      allOf:
+        - $ref: '#/components/schemas/CreateOutOfOfficeCommand'
     WeeklyHoursCommand:
       type: object
       required:

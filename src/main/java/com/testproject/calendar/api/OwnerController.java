@@ -11,6 +11,11 @@ import com.testproject.calendar.generated.model.ArchiveMeetingTypeCommand;
 import com.testproject.calendar.generated.model.WeeklyHoursCommand;
 import com.testproject.calendar.generated.model.DateOverrideCommand;
 import com.testproject.calendar.generated.model.DeleteDateOverrideCommand;
+import com.testproject.calendar.generated.model.OutOfOffice;
+import com.testproject.calendar.generated.model.OutOfOfficeList;
+import com.testproject.calendar.generated.model.CreateOutOfOfficeCommand;
+import com.testproject.calendar.generated.model.UpdateOutOfOfficeCommand;
+import com.testproject.calendar.generated.model.DeleteOutOfOfficeCommand;
 import com.testproject.calendar.generated.model.MeetingType;
 import com.testproject.calendar.generated.model.MeetingTypeList;
 import com.testproject.calendar.generated.model.OwnerBookingList;
@@ -28,6 +33,27 @@ public class OwnerController implements OwnerApi {
 
     public OwnerController(OwnerState owner) {
         this.owner = owner;
+    }
+
+    @Override
+    public ResponseEntity<OutOfOfficeList> listOutOfOffice() {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(new OutOfOfficeList(owner.vacations()));
+    }
+
+    @Override
+    public ResponseEntity<OutOfOffice> createOutOfOffice(String key, CreateOutOfOfficeCommand command) {
+        return ResponseEntity.status(201).cacheControl(CacheControl.noStore()).body(owner.createVacation(key, command));
+    }
+
+    @Override
+    public ResponseEntity<OutOfOffice> updateOutOfOffice(String id, String key, UpdateOutOfOfficeCommand command) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(owner.updateVacation(key, id, command));
+    }
+
+    @Override
+    public ResponseEntity<Void> deleteOutOfOffice(String id, String key, DeleteOutOfOfficeCommand command) {
+        owner.deleteVacation(key, id, command);
+        return ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build();
     }
 
     @Override

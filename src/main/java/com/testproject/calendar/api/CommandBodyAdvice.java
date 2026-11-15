@@ -9,6 +9,9 @@ import com.testproject.calendar.generated.model.BookingDecisionCommand;
 import com.testproject.calendar.generated.model.WeeklyHoursCommand;
 import com.testproject.calendar.generated.model.DateOverrideCommand;
 import com.testproject.calendar.generated.model.DeleteDateOverrideCommand;
+import com.testproject.calendar.generated.model.CreateOutOfOfficeCommand;
+import com.testproject.calendar.generated.model.UpdateOutOfOfficeCommand;
+import com.testproject.calendar.generated.model.DeleteOutOfOfficeCommand;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -40,7 +43,8 @@ public class CommandBodyAdvice extends RequestBodyAdviceAdapter {
                 || targetType == CreateMeetingTypeCommand.class || targetType == BookingDecisionCommand.class
                 || targetType == UpdateMeetingTypeCommand.class || targetType == ArchiveMeetingTypeCommand.class
                 || targetType == WeeklyHoursCommand.class || targetType == DateOverrideCommand.class
-                || targetType == DeleteDateOverrideCommand.class;
+                || targetType == DeleteDateOverrideCommand.class || targetType == CreateOutOfOfficeCommand.class
+                || targetType == UpdateOutOfOfficeCommand.class || targetType == DeleteOutOfOfficeCommand.class;
     }
 
     @Override

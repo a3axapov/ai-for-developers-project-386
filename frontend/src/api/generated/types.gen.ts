@@ -24,6 +24,7 @@ export type ApiError = {
     currentProfile?: OwnerProfile;
     currentBooking?: BookingDetails;
     currentMeetingType?: MeetingType;
+    currentOutOfOffice?: OutOfOffice;
     currentConditions?: PublicMeetingType;
     fieldErrors?: Array<FieldError>;
     affectedBookings?: Array<AffectedBooking>;
@@ -95,6 +96,12 @@ export type CreateMeetingTypeCommand = {
     requiresApproval?: boolean;
 };
 
+export type CreateOutOfOfficeCommand = {
+    startDate: string;
+    endDate: string;
+    confirmationToken?: string;
+};
+
 export type DateOverride = {
     date: string;
     intervals: Array<WorkingInterval>;
@@ -110,6 +117,11 @@ export type DateOverrideCommand = {
 };
 
 export type DeleteDateOverrideCommand = {
+    expectedVersion: number;
+    confirmationToken?: string;
+};
+
+export type DeleteOutOfOfficeCommand = {
     expectedVersion: number;
     confirmationToken?: string;
 };
@@ -152,6 +164,18 @@ export type MeetingTypeList = {
     items: Array<MeetingType>;
 };
 
+export type OutOfOffice = {
+    id: string;
+    startDate: string;
+    endDate: string;
+    timeZone: string;
+    version: number;
+};
+
+export type OutOfOfficeList = {
+    items: Array<OutOfOffice>;
+};
+
 /**
  * Owner-only booking snapshots. No result URLs, access tokens or attempt secrets.
  */
@@ -166,6 +190,7 @@ export type OwnerOperationResult = {
     statusCode: number;
     profile?: OwnerProfile;
     meetingType?: MeetingType;
+    outOfOffice?: OutOfOffice;
     booking?: BookingDetails;
     error?: ApiError;
 };
@@ -302,6 +327,10 @@ export type UpdateMeetingTypeCommand = {
     description: string;
     durationMinutes: number;
     requiresApproval: boolean;
+    expectedVersion: number;
+};
+
+export type UpdateOutOfOfficeCommand = CreateOutOfOfficeCommand & {
     expectedVersion: number;
 };
 
@@ -1020,6 +1049,142 @@ export type GetOwnerOperationResponses = {
 };
 
 export type GetOwnerOperationResponse = GetOwnerOperationResponses[keyof GetOwnerOperationResponses];
+
+export type ListOutOfOfficeData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/owner/out-of-office';
+};
+
+export type ListOutOfOfficeResponses = {
+    /**
+     * The request has succeeded.
+     */
+    200: OutOfOfficeList;
+};
+
+export type ListOutOfOfficeResponse = ListOutOfOfficeResponses[keyof ListOutOfOfficeResponses];
+
+export type CreateOutOfOfficeData = {
+    body: CreateOutOfOfficeCommand;
+    headers: {
+        'Idempotency-Key': IdempotencyKey;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/owner/out-of-office';
+};
+
+export type CreateOutOfOfficeErrors = {
+    /**
+     * The server could not understand the request due to invalid syntax.
+     */
+    400: ApiError;
+    /**
+     * The request conflicts with the current state of the server.
+     */
+    409: ApiError;
+    /**
+     * Client error
+     */
+    422: ApiError;
+};
+
+export type CreateOutOfOfficeError = CreateOutOfOfficeErrors[keyof CreateOutOfOfficeErrors];
+
+export type CreateOutOfOfficeResponses = {
+    /**
+     * The request has succeeded and a new resource has been created as a result.
+     */
+    201: OutOfOffice;
+};
+
+export type CreateOutOfOfficeResponse = CreateOutOfOfficeResponses[keyof CreateOutOfOfficeResponses];
+
+export type DeleteOutOfOfficeData = {
+    body: DeleteOutOfOfficeCommand;
+    headers: {
+        'Idempotency-Key': IdempotencyKey;
+    };
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/owner/out-of-office/{id}';
+};
+
+export type DeleteOutOfOfficeErrors = {
+    /**
+     * The server could not understand the request due to invalid syntax.
+     */
+    400: ApiError;
+    /**
+     * The server cannot find the requested resource.
+     */
+    404: ApiError;
+    /**
+     * The request conflicts with the current state of the server.
+     */
+    409: ApiError;
+    /**
+     * Client error
+     */
+    422: ApiError;
+};
+
+export type DeleteOutOfOfficeError = DeleteOutOfOfficeErrors[keyof DeleteOutOfOfficeErrors];
+
+export type DeleteOutOfOfficeResponses = {
+    /**
+     * There is no content to send for this request, but the headers may be useful.
+     */
+    204: void;
+};
+
+export type DeleteOutOfOfficeResponse = DeleteOutOfOfficeResponses[keyof DeleteOutOfOfficeResponses];
+
+export type UpdateOutOfOfficeData = {
+    body: UpdateOutOfOfficeCommand;
+    headers: {
+        'Idempotency-Key': IdempotencyKey;
+    };
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/owner/out-of-office/{id}';
+};
+
+export type UpdateOutOfOfficeErrors = {
+    /**
+     * The server could not understand the request due to invalid syntax.
+     */
+    400: ApiError;
+    /**
+     * The server cannot find the requested resource.
+     */
+    404: ApiError;
+    /**
+     * The request conflicts with the current state of the server.
+     */
+    409: ApiError;
+    /**
+     * Client error
+     */
+    422: ApiError;
+};
+
+export type UpdateOutOfOfficeError = UpdateOutOfOfficeErrors[keyof UpdateOutOfOfficeErrors];
+
+export type UpdateOutOfOfficeResponses = {
+    /**
+     * The request has succeeded.
+     */
+    200: OutOfOffice;
+};
+
+export type UpdateOutOfOfficeResponse = UpdateOutOfOfficeResponses[keyof UpdateOutOfOfficeResponses];
 
 export type GetOwnerProfileData = {
     body?: never;
