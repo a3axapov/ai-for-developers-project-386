@@ -215,7 +215,9 @@ HTTP допускается только для буквальных `localhost`
 При другом порте укажите точный локальный origin, например
 `CALENDAR_PUBLIC_ORIGIN=http://localhost:5173 mise run dev` для Vite.
 В production **обязательно** задайте фактический публичный HTTPS-origin приложения;
-не оставляйте локальный default. Production-адрес и развёртывание пока не настроены.
+не оставляйте локальный default. В Render публичный origin автоматически берётся
+из `RENDER_EXTERNAL_URL`; при собственном домене задайте `CALENDAR_PUBLIC_ORIGIN`
+явно. Развёртывание описано в [docs/deploy.md](docs/deploy.md).
 Тестовые серверы явно задают собственные origins независимо от входящих заголовков.
 Решение о настройке: [#33](https://github.com/a3axapov/ai-for-developers-project-386/issues/33#issuecomment-6894563225).
 

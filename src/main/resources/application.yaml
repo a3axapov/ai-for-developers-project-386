@@ -12,7 +12,7 @@ spring:
       accept-float-as-int: false
 
 calendar:
-  public-origin: ${CALENDAR_PUBLIC_ORIGIN:http://localhost:8080}
+  public-origin: ${CALENDAR_PUBLIC_ORIGIN:${RENDER_EXTERNAL_URL:http://localhost:8080}}
   initial:
     name: Владелец календаря
     username: owner

@@ -8,6 +8,12 @@
 Описание инфраструктуры хранится в [`render.yaml`](../render.yaml): Blueprint,
 ветка `main`, Docker runtime, health check `/api/health`, автодеплой по пушу.
 
+Публичный origin для абсолютных ссылок в `.ics` берётся из
+`CALENDAR_PUBLIC_ORIGIN`. В Render эта переменная не нужна: платформа сама
+выставляет `RENDER_EXTERNAL_URL` (`https://<service>.onrender.com`), и приложение
+использует его как значение по умолчанию. При подключении собственного домена
+задайте `CALENDAR_PUBLIC_ORIGIN=https://<домен>` в переменных сервиса.
+
 ## Первый деплой
 
 1. Убедиться, что `main` отправлен в GitHub.
