@@ -378,6 +378,40 @@ class BookingSubmissionHttpTests {
     }
 
     @ParameterizedTest
+    @CsvSource({"false", "true"})
+    void sixtyMinuteBookingRejectsThirtyMinuteCrossTypePartialOverlapButAllowsAdjacency(boolean approval)
+            throws Exception {
+        try (var app = start(new MutableClock())) {
+            seed(app, "Long", approval, 60);
+            seed(app, "Short", false, 30);
+            var longAttempt = prepare(app, "Long", "2026-11-02T10:00:00+03:00");
+            // Prepare before the competing submission, just as a guest with an already open form would.
+            var overlapping = prepare(app, "Short", "2026-11-02T10:30:00+03:00");
+            var adjacent = prepare(app, "Short", "2026-11-02T11:00:00+03:00");
+            var booked = submit(app, longAttempt);
+            assertEquals(201, booked.statusCode(), booked.body());
+            assertEquals(approval ? "PENDING" : "CONFIRMED",
+                    json.readTree(booked.body()).get("booking").get("status").asString());
+            var before = get(app, "/api/owner/bookings?view=upcoming");
+            var slotsBefore = get(app, "/api/public/owner/meeting-types/Short/slots");
+            var refused = submit(app, overlapping);
+            assertError(refused, 409, "TIME_CONFLICT");
+            assertEquals(json.readTree("""
+                    {"code":"TIME_CONFLICT","message":"Время уже занято. Выберите другое время."}
+                    """), json.readTree(refused.body()));
+            assertEquals(before, get(app, "/api/owner/bookings?view=upcoming"));
+            assertEquals(slotsBefore, get(app, "/api/public/owner/meeting-types/Short/slots"));
+            assertEquals(refused.body(), submit(app, overlapping).body());
+            var accepted = submit(app, adjacent);
+            assertEquals(201, accepted.statusCode(), accepted.body());
+            assertEquals(Instant.parse("2026-11-02T08:00:00Z"),
+                    java.time.OffsetDateTime.parse(json.readTree(accepted.body())
+                            .get("booking").get("startsAt").asString()).toInstant());
+            assertEquals(2, get(app, "/api/owner/bookings?view=upcoming").get("items").size());
+        }
+    }
+
+    @ParameterizedTest
     @CsvSource({"false,09:00", "true,09:15", "false,09:15", "true,09:00"})
     void concurrentCrossTypeSubmissionsReserveSharedTimeAndAllowAdjacency(boolean approval, String secondTime)
             throws Exception {

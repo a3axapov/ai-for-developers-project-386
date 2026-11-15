@@ -17,6 +17,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.web.server.context.WebServerApplicationContext;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -110,9 +112,28 @@ class CalendarExportHttpTests {
         }
     }
 
-    @Test
-    void configuredOriginIgnoresSpoofedHostAndForwardingHeaders() throws Exception {
-        try (var app = start(new BookingSubmissionHttpTests.MutableClock())) {
+    @ParameterizedTest
+    @CsvSource({
+        ",,http://localhost:8080",
+        ",https://render.example,https://render.example",
+        "https://explicit.example,https://render.example,https://explicit.example",
+        "https://explicit.example,invalid-render-origin,https://explicit.example"
+    })
+    void yamlEnvironmentOriginIgnoresSpoofedHostAndForwardingHeaders(
+            String explicitOrigin, String renderOrigin, String expectedOrigin) throws Exception {
+        var variables = new java.util.HashMap<String, Object>();
+        if (explicitOrigin != null) {
+            variables.put("CALENDAR_PUBLIC_ORIGIN", explicitOrigin);
+        }
+        if (renderOrigin != null) {
+            variables.put("RENDER_EXTERNAL_URL", renderOrigin);
+        }
+        var clock = new BookingSubmissionHttpTests.MutableClock();
+        // No calendar.public-origin override: exercise application.yaml's real placeholder chain.
+        try (var app = new SpringApplicationBuilder(CalendarApplication.class)
+                .environment(PublicOriginConfigurationTests.environment(variables))
+                .initializers(context -> context.getBeanFactory().registerSingleton("testClock", clock))
+                .run("--server.port=0", "--calendar.initial.booking-enabled=true")) {
             var saved = book(app, false);
             int port = ((WebServerApplicationContext) app).getWebServer().getPort();
             // Raw HTTP permits testing Host without changing JVM-wide restricted-header settings.
@@ -125,7 +146,7 @@ class CalendarExportHttpTests {
                 var response = new String(socket.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
                 assertTrue(response.startsWith("HTTP/1.1 200"), response);
                 var event = parse(response.substring(response.indexOf("\r\n\r\n") + 4));
-                assertEquals("https://calendar.example" + saved.get("resultUrl").asString(), one(event, "URL"));
+                assertEquals(expectedOrigin + saved.get("resultUrl").asString(), one(event, "URL"));
                 assertFalse(response.contains("attacker.example"));
             }
         }
