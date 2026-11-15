@@ -30,6 +30,7 @@ import com.testproject.calendar.generated.model.OwnerProfile;
 import com.testproject.calendar.generated.model.ProfileCommand;
 import com.testproject.calendar.generated.model.PublicBookingCommand;
 import com.testproject.calendar.generated.model.TimeBlockResult;
+import com.testproject.calendar.generated.model.TimeZoneCommand;
 import com.testproject.calendar.generated.model.UpdateMeetingTypeCommand;
 import com.testproject.calendar.generated.model.UpdateOutOfOfficeCommand;
 import com.testproject.calendar.generated.model.UpdateTimeBlockCommand;
@@ -579,6 +580,30 @@ public interface OwnerApi {
     ResponseEntity<OwnerProfile> updateOwnerProfile(
          @RequestHeader(value = "Idempotency-Key", required = true) String idempotencyKey,
          @RequestBody ProfileCommand profileCommand
+    );
+
+
+    String PATH_UPDATE_OWNER_TIME_ZONE = "/api/owner/time-zone";
+    /**
+     * PUT /api/owner/time-zone
+     * Atomically change the owner zone and optionally all active type zones. Actual bookings, blocks and saved vacation zones do not move. New availability consequences require fresh consent.
+     *
+     * @param idempotencyKey  (required)
+     * @param timeZoneCommand  (required)
+     * @return The request has succeeded. (status code 200)
+     *         or The server could not understand the request due to invalid syntax. (status code 400)
+     *         or The request conflicts with the current state of the server. (status code 409)
+     *         or Client error (status code 422)
+     */
+    @RequestMapping(
+        method = RequestMethod.PUT,
+        value = OwnerApi.PATH_UPDATE_OWNER_TIME_ZONE,
+        produces = { "application/json" },
+        consumes = { "application/json" }
+    )
+    ResponseEntity<OwnerProfile> updateOwnerTimeZone(
+         @RequestHeader(value = "Idempotency-Key", required = true) String idempotencyKey,
+         @RequestBody TimeZoneCommand timeZoneCommand
     );
 
 

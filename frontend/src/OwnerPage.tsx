@@ -7,6 +7,7 @@ import {
 import { OwnerBookings } from './OwnerBookings';
 import { Vacations } from './Vacations';
 import { TimeBlocks } from './TimeBlocks';
+import { OwnerTimeZone } from './OwnerTimeZone';
 import {
   getOwnerProfile,
   getOwnerOperation,
@@ -28,7 +29,10 @@ export function OwnerPage() {
   const [typesBlocked, setMeetingBlocked] = useState(false);
   const [vacationBlocked, setVacationBlocked] = useState(false);
   const [blockBlocked, setBlockBlocked] = useState(false);
-  const meetingBlocked = typesBlocked || vacationBlocked || blockBlocked;
+  const [zoneBlocked, setZoneBlocked] = useState(false);
+  const [zoneRevision, setZoneRevision] = useState(0);
+  const meetingBlocked =
+    typesBlocked || vacationBlocked || blockBlocked || zoneBlocked;
   const [bookingBlocked, setBookingBlocked] = useState(false);
   const [commandError, setCommandError] = useState<string>();
   const [copyMessage, setCopyMessage] = useState<string>();
@@ -245,6 +249,22 @@ export function OwnerPage() {
               <dd>{state.profile.timeZone}</dd>
             </div>
           </dl>
+          <OwnerTimeZone
+            profile={state.profile}
+            blocked={
+              saving ||
+              Boolean(pendingKey) ||
+              typesBlocked ||
+              vacationBlocked ||
+              blockBlocked ||
+              bookingBlocked
+            }
+            onLockChange={setZoneBlocked}
+            onApplied={(profile) => {
+              setState({ status: 'ready', profile });
+              setZoneRevision((value) => value + 1);
+            }}
+          />
           <form
             className="profile-editor"
             aria-label="Редактирование профиля"
@@ -401,6 +421,7 @@ export function OwnerPage() {
           </button>
           {copyMessage && <p role="status">{copyMessage}</p>}
           <MeetingTypes
+            refreshVersion={zoneRevision}
             editing={meetingEdit}
             onEditChange={setMeetingEdit}
             bookingUrl={state.profile.bookingUrl}
@@ -409,7 +430,8 @@ export function OwnerPage() {
               Boolean(pendingKey) ||
               bookingBlocked ||
               vacationBlocked ||
-              blockBlocked
+              blockBlocked ||
+              zoneBlocked
             }
             draft={meetingDraft}
             onDraftChange={setMeetingDraft}
@@ -425,7 +447,8 @@ export function OwnerPage() {
               Boolean(pendingKey) ||
               typesBlocked ||
               bookingBlocked ||
-              blockBlocked
+              blockBlocked ||
+              zoneBlocked
             }
             onLockChange={setVacationBlocked}
             onProfileLoaded={(profile) =>
@@ -439,7 +462,8 @@ export function OwnerPage() {
               Boolean(pendingKey) ||
               typesBlocked ||
               vacationBlocked ||
-              bookingBlocked
+              bookingBlocked ||
+              zoneBlocked
             }
             onLockChange={setBlockBlocked}
             onProfileLoaded={(profile) =>
@@ -447,6 +471,7 @@ export function OwnerPage() {
             }
           />
           <OwnerBookings
+            refreshVersion={zoneRevision}
             blocked={saving || Boolean(pendingKey) || meetingBlocked}
             onLockChange={setBookingBlocked}
           />

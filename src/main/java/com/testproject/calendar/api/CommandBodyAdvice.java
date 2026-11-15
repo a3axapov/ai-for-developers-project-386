@@ -2,6 +2,7 @@ package com.testproject.calendar.api;
 
 import com.testproject.calendar.generated.model.PublicBookingCommand;
 import com.testproject.calendar.generated.model.ProfileCommand;
+import com.testproject.calendar.generated.model.TimeZoneCommand;
 import com.testproject.calendar.generated.model.CreateMeetingTypeCommand;
 import com.testproject.calendar.generated.model.UpdateMeetingTypeCommand;
 import com.testproject.calendar.generated.model.ArchiveMeetingTypeCommand;
@@ -49,7 +50,7 @@ public class CommandBodyAdvice extends RequestBodyAdviceAdapter {
                 || targetType == DeleteDateOverrideCommand.class || targetType == CreateOutOfOfficeCommand.class
                 || targetType == UpdateOutOfOfficeCommand.class || targetType == DeleteOutOfOfficeCommand.class
                 || targetType == CreateTimeBlockCommand.class || targetType == UpdateTimeBlockCommand.class
-                || targetType == DeleteTimeBlockCommand.class;
+                || targetType == DeleteTimeBlockCommand.class || targetType == TimeZoneCommand.class;
     }
 
     @Override

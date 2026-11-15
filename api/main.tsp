@@ -35,6 +35,34 @@ model OwnerProfile {
   bookingUrl: string;
 }
 
+model TimeZoneCommand {
+  @doc("IANA zone ID, using the same policy as initial configuration.")
+  timeZone: string;
+
+  @doc("Explicit choice: retain existing type zones, or preserve active types' local hours and exception dates in the new zone. Archived types and vacations never change.")
+  applyToActiveTypes: boolean;
+
+  expectedVersion: int64;
+  confirmationToken?: string;
+}
+
+@put
+@route("/owner/time-zone")
+@tag("Owner")
+@operationId("updateOwnerTimeZone")
+@doc("Atomically change the owner zone and optionally all active type zones. Actual bookings, blocks and saved vacation zones do not move. New availability consequences require fresh consent.")
+op updateOwnerTimeZone(
+  @header("Idempotency-Key") idempotencyKey: IdempotencyKey,
+  @body command: TimeZoneCommand,
+):
+  | {
+      @header("Cache-Control") cacheControl: "no-store";
+      @body body: OwnerProfile;
+    }
+  | StateConflict
+  | InvalidData
+  | MalformedRequest;
+
 @get
 @route("/owner/profile")
 @tag("Owner")

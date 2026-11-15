@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   createTimeBlock,
   updateTimeBlock,
@@ -11,7 +11,7 @@ import {
   type TimeBlockResult,
   type OwnerProfile,
 } from './api/generated';
-import { localTime, validOffsets, literalOffset } from './manualTime';
+import { localTime, validOffsets, offsetInZone } from './manualTime';
 import { dateLabel, dayKey, timeLabel } from './displayTime';
 
 export function TimeBlocks({
@@ -51,6 +51,39 @@ export function TimeBlocks({
   const [unavailable, setUnavailable] = useState(false);
   const [missing, setMissing] = useState(false);
   const locked = blocked || saving || Boolean(pendingKey);
+  const previousZone = useRef(timeZone);
+  useEffect(() => {
+    const oldZone = previousZone.current;
+    if (oldZone === timeZone) return;
+    previousZone.current = timeZone;
+    setPreview(undefined);
+    setDraft((value) => {
+      function rebase(wall: string, offset: string) {
+        if (!current) return { wall, offset: '' };
+        const choices = validOffsets(wall, oldZone);
+        const selected = choices.includes(offset)
+          ? offset
+          : choices.length === 1
+            ? choices[0]
+            : '';
+        if (!selected) return { wall, offset: '' };
+        const instant = `${wall}${selected}`;
+        return {
+          wall: localTime(instant, timeZone),
+          offset: offsetInZone(instant, timeZone),
+        };
+      }
+      const start = rebase(value.startsAt, value.startOffset);
+      const end = rebase(value.endsAt, value.endOffset);
+      return {
+        ...value,
+        startsAt: start.wall,
+        startOffset: start.offset,
+        endsAt: end.wall,
+        endOffset: end.offset,
+      };
+    });
+  }, [timeZone, current]);
   const startOffsets = useMemo(
     () => validOffsets(draft.startsAt, timeZone),
     [draft.startsAt, timeZone],
@@ -284,8 +317,8 @@ export function TimeBlocks({
       title: value?.title ?? '',
       startsAt: value ? localTime(value.startsAt, timeZone) : '',
       endsAt: value ? localTime(value.endsAt, timeZone) : '',
-      startOffset: value ? literalOffset(value.startsAt) : '',
-      endOffset: value ? literalOffset(value.endsAt) : '',
+      startOffset: value ? offsetInZone(value.startsAt, timeZone) : '',
+      endOffset: value ? offsetInZone(value.endsAt, timeZone) : '',
     });
     setEditing(true);
     setMissing(false);

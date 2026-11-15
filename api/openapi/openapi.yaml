@@ -1430,6 +1430,56 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/DeleteTimeBlockCommand'
+  /api/owner/time-zone:
+    put:
+      operationId: updateOwnerTimeZone
+      description: Atomically change the owner zone and optionally all active type zones. Actual bookings, blocks and saved vacation zones do not move. New availability consequences require fresh consent.
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/IdempotencyKey'
+      responses:
+        '200':
+          description: The request has succeeded.
+          headers:
+            Cache-Control:
+              required: true
+              schema:
+                type: string
+                enum:
+                  - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnerProfile'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: The request conflicts with the current state of the server.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      tags:
+        - Owner
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TimeZoneCommand'
   /api/public/booking-entry/current:
     get:
       operationId: getBookingEntry
@@ -2318,6 +2368,24 @@ components:
           type: array
           items:
             type: string
+    TimeZoneCommand:
+      type: object
+      required:
+        - timeZone
+        - applyToActiveTypes
+        - expectedVersion
+      properties:
+        timeZone:
+          type: string
+          description: IANA zone ID, using the same policy as initial configuration.
+        applyToActiveTypes:
+          type: boolean
+          description: "Explicit choice: retain existing type zones, or preserve active types' local hours and exception dates in the new zone. Archived types and vacations never change."
+        expectedVersion:
+          type: integer
+          format: int64
+        confirmationToken:
+          type: string
     UpdateMeetingTypeCommand:
       type: object
       required:

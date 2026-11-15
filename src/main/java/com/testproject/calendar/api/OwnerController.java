@@ -5,6 +5,7 @@ import com.testproject.calendar.generated.model.OwnerProfile;
 import com.testproject.calendar.generated.model.OwnerOperationResult;
 import com.testproject.calendar.generated.model.PublicBookingCommand;
 import com.testproject.calendar.generated.model.ProfileCommand;
+import com.testproject.calendar.generated.model.TimeZoneCommand;
 import com.testproject.calendar.generated.model.CreateMeetingTypeCommand;
 import com.testproject.calendar.generated.model.UpdateMeetingTypeCommand;
 import com.testproject.calendar.generated.model.ArchiveMeetingTypeCommand;
@@ -172,6 +173,11 @@ public class OwnerController implements OwnerApi {
     @Override
     public ResponseEntity<OwnerProfile> getOwnerProfile() {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(owner.profile());
+    }
+
+    @Override
+    public ResponseEntity<OwnerProfile> updateOwnerTimeZone(String key, TimeZoneCommand command) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(owner.updateTimeZone(key, command));
     }
 
     @Override

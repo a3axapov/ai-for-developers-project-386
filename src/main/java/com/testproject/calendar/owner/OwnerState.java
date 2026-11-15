@@ -15,6 +15,7 @@ import com.testproject.calendar.generated.model.OwnerProfile;
 import com.testproject.calendar.generated.model.OwnerOperationResult;
 import com.testproject.calendar.generated.model.PublicBookingCommand;
 import com.testproject.calendar.generated.model.ProfileCommand;
+import com.testproject.calendar.generated.model.TimeZoneCommand;
 import com.testproject.calendar.generated.model.MeetingType;
 import com.testproject.calendar.generated.model.CreateMeetingTypeCommand;
 import com.testproject.calendar.generated.model.UpdateMeetingTypeCommand;
@@ -60,6 +61,7 @@ public class OwnerState {
     private boolean bookingEnabled;
     private String name;
     private String username;
+    private String timeZone;
     private long version = 1;
     private final Map<String, SavedCommand> operations = new HashMap<>();
     private final Map<String, MeetingType> meetingTypes = new LinkedHashMap<>();
@@ -486,11 +488,114 @@ public class OwnerState {
         bookingEnabled = initial.bookingEnabled();
         name = initial.name();
         username = initial.username();
+        timeZone = initial.timeZone();
     }
 
     public synchronized OwnerProfile profile() {
-        return new OwnerProfile(name, username, initial.timeZone(),
+        return new OwnerProfile(name, username, timeZone,
                 bookingEnabled, version, "/booking/" + username);
+    }
+
+    public synchronized OwnerProfile updateTimeZone(String key, TimeZoneCommand command) {
+        if (!validKey(key)) {
+            throw invalidKey();
+        }
+        var saved = operations.get(key);
+        if (saved != null) {
+            if (!saved.request().equals(command)) {
+                throw new ApiFailure(409, new ApiError("IDEMPOTENCY_KEY_REUSED",
+                        "Этот ключ уже использован для другого запроса."));
+            }
+            if (saved.failure() != null) {
+                throw saved.failure();
+            }
+            return saved.profile();
+        }
+        try {
+            if (command.getTimeZone() == null
+                    || !java.time.ZoneId.getAvailableZoneIds().contains(command.getTimeZone())) {
+                throw invalidHours("timeZone", "Выберите валидный IANA-пояс.");
+            }
+            if (command.getApplyToActiveTypes() == null) {
+                throw invalidHours("applyToActiveTypes", "Явно укажите true или false.");
+            }
+            requireTypeVersionValue(command.getExpectedVersion());
+            if (version != command.getExpectedVersion()) {
+                throw new ApiFailure(409, new ApiError("RESOURCE_CHANGED",
+                        "Профиль изменился. Проверьте актуальные данные.").currentProfile(profile()));
+            }
+            var translated = new LinkedHashMap<String, MeetingType>();
+            if (command.getApplyToActiveTypes()) {
+                for (var current : meetingTypes.values()) {
+                    if (!current.getArchived()) {
+                        translated.put(current.getId(), new MeetingType(current.getId(), current.getTitle(),
+                                current.getDescription(), current.getDurationMinutes(), current.getRequiresApproval(),
+                                command.getTimeZone(), current.getVersion() + 1, false,
+                                current.getDays(), current.getDateOverrides()));
+                    }
+                }
+            }
+            requireTimeZoneConsent(command, translated);
+            timeZone = command.getTimeZone();
+            version++;
+            meetingTypes.putAll(translated);
+            var result = profile();
+            operations.put(key, new SavedCommand(command, result, null));
+            return result;
+        } catch (ApiFailure failure) {
+            operations.put(key, new SavedCommand(command, null, failure));
+            throw failure;
+        }
+    }
+
+    private record ZoneProposal(String timeZone, boolean applyToActiveTypes, long profileVersion,
+            Map<String, Long> activeTypeVersions) { }
+    private record ZoneImpact(ZoneProposal proposal, List<AffectedBooking> bookings) { }
+    private final Map<String, ZoneImpact> zoneConfirmations = new HashMap<>();
+
+    private void requireTimeZoneConsent(TimeZoneCommand command, Map<String, MeetingType> translated) {
+        var now = clock.instant();
+        refreshBookings(now);
+        var activeVersions = new java.util.TreeMap<String, Long>();
+        meetingTypes.values().stream().filter(type -> !type.getArchived())
+                .forEach(type -> activeVersions.put(type.getId(), type.getVersion()));
+        var affected = bookings.values().stream()
+                .filter(booking -> booking.getStartsAt().toInstant().isAfter(now)
+                        && (booking.getStatus() == BookingDetails.StatusEnum.PENDING
+                        || booking.getStatus() == BookingDetails.StatusEnum.CONFIRMED))
+                .filter(booking -> {
+                    var type = meetingType(booking.getMeetingTypeId());
+                    var proposed = translated.getOrDefault(type.getId(), type);
+                    return fitsZoneAvailability(type, timeZone, booking, now)
+                            && !fitsZoneAvailability(proposed, command.getTimeZone(), booking, now);
+                })
+                .sorted(java.util.Comparator.comparing((BookingDetails booking) -> booking.getStartsAt().toInstant())
+                        .thenComparing(BookingDetails::getId))
+                .map(booking -> new AffectedBooking(booking.getId(), booking.getMeetingTypeId(),
+                        booking.getTitle(), booking.getGuestName(), booking.getStartsAt(), booking.getEndsAt(),
+                        AffectedBooking.StatusEnum.valueOf(booking.getStatus().name()), booking.getVersion())).toList();
+        var impact = new ZoneImpact(new ZoneProposal(command.getTimeZone(), command.getApplyToActiveTypes(),
+                version, Map.copyOf(activeVersions)), affected);
+        var token = command.getConfirmationToken();
+        if ((!affected.isEmpty() || token != null) && !impact.equals(zoneConfirmations.get(token))) {
+            var fresh = randomToken();
+            zoneConfirmations.put(fresh, impact);
+            throw new ApiFailure(409, new ApiError("IMPACT_CONFIRMATION_REQUIRED",
+                    "Новый пояс изменит доступность показанных записей. "
+                            + "Бронирования, блокировки и отпуска не переносятся.")
+                    .affectedBookings(affected).confirmationToken(fresh));
+        }
+    }
+
+    private boolean fitsZoneAvailability(MeetingType type, String ownerZone, BookingDetails booking,
+            java.time.Instant now) {
+        var zone = java.time.ZoneId.of(ownerZone);
+        var tomorrow = now.atZone(zone).toLocalDate().plusDays(1);
+        var start = booking.getStartsAt().toInstant();
+        var end = booking.getEndsAt().toInstant();
+        return !start.isBefore(tomorrow.atStartOfDay(zone).toInstant())
+                && !end.isAfter(tomorrow.plusDays(14).atStartOfDay(zone).toInstant())
+                && fitsHours(type, booking) && !occupied(start, end, booking.getId());
     }
 
     public synchronized MeetingType createMeetingType(String key, CreateMeetingTypeCommand command) {

@@ -45,9 +45,11 @@ function initialRange() {
 export function OwnerBookings({
   blocked,
   onLockChange,
+  refreshVersion = 0,
 }: {
   blocked: boolean;
   onLockChange: (locked: boolean) => void;
+  refreshVersion?: number;
 }) {
   const [view, setView] = useState('upcoming');
   const [status, setStatus] = useState('');
@@ -249,7 +251,7 @@ export function OwnerBookings({
         if (!signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [view, status, range, reload]);
+  }, [view, status, range, reload, refreshVersion]);
 
   useEffect(() => {
     if (!selectedId) return;
@@ -276,7 +278,7 @@ export function OwnerBookings({
         if (!controller.signal.aborted) setDetailLoading(false);
       });
     return () => controller.abort();
-  }, [selectedId, reload]);
+  }, [selectedId, reload, refreshVersion]);
 
   return (
     <section className="owner-bookings" aria-label="Бронирования владельца">

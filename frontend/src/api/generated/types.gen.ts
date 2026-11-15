@@ -356,6 +356,19 @@ export type TimeBlockResult = {
     rejectedBookingIds: Array<string>;
 };
 
+export type TimeZoneCommand = {
+    /**
+     * IANA zone ID, using the same policy as initial configuration.
+     */
+    timeZone: string;
+    /**
+     * Explicit choice: retain existing type zones, or preserve active types' local hours and exception dates in the new zone. Archived types and vacations never change.
+     */
+    applyToActiveTypes: boolean;
+    expectedVersion: number;
+    confirmationToken?: string;
+};
+
 export type UpdateMeetingTypeCommand = {
     title: string;
     description: string;
@@ -1431,6 +1444,42 @@ export type UpdateTimeBlockResponses = {
 };
 
 export type UpdateTimeBlockResponse = UpdateTimeBlockResponses[keyof UpdateTimeBlockResponses];
+
+export type UpdateOwnerTimeZoneData = {
+    body: TimeZoneCommand;
+    headers: {
+        'Idempotency-Key': IdempotencyKey;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/owner/time-zone';
+};
+
+export type UpdateOwnerTimeZoneErrors = {
+    /**
+     * The server could not understand the request due to invalid syntax.
+     */
+    400: ApiError;
+    /**
+     * The request conflicts with the current state of the server.
+     */
+    409: ApiError;
+    /**
+     * Client error
+     */
+    422: ApiError;
+};
+
+export type UpdateOwnerTimeZoneError = UpdateOwnerTimeZoneErrors[keyof UpdateOwnerTimeZoneErrors];
+
+export type UpdateOwnerTimeZoneResponses = {
+    /**
+     * The request has succeeded.
+     */
+    200: OwnerProfile;
+};
+
+export type UpdateOwnerTimeZoneResponse = UpdateOwnerTimeZoneResponses[keyof UpdateOwnerTimeZoneResponses];
 
 export type GetBookingEntryData = {
     body?: never;

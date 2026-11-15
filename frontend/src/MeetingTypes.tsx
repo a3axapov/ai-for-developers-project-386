@@ -43,6 +43,7 @@ export function MeetingTypes({
   onProfileLoaded,
   editing,
   onEditChange,
+  refreshVersion = 0,
 }: {
   bookingUrl: string;
   blocked: boolean;
@@ -52,6 +53,7 @@ export function MeetingTypes({
   onProfileLoaded: (profile: OwnerProfile) => void;
   editing: MeetingTypeEdit | undefined;
   onEditChange: (editing: MeetingTypeEdit | undefined) => void;
+  refreshVersion?: number;
 }) {
   const [items, setItems] = useState<MeetingType[]>([]);
   const [hoursItem, setHoursItem] = useState<MeetingType>();
@@ -130,7 +132,7 @@ export function MeetingTypes({
       },
     );
     return () => controller.abort();
-  }, [attempt]);
+  }, [attempt, refreshVersion]);
 
   async function save() {
     if (locked || loading || loadError) return;

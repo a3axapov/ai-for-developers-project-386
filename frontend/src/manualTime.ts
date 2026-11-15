@@ -50,3 +50,12 @@ export function validOffsets(literal: string, zone: string): string[] {
 export function literalOffset(instant: string) {
   return instant.endsWith('Z') ? '+00:00' : instant.slice(-6);
 }
+
+export function offsetInZone(instant: string, zone: string) {
+  const wall = localTime(instant, zone);
+  return (
+    validOffsets(wall, zone).find(
+      (offset) => Date.parse(`${wall}${offset}`) === Date.parse(instant),
+    ) ?? ''
+  );
+}
