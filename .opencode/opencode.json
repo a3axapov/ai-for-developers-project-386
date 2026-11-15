@@ -3,5 +3,17 @@
   "tool_output": {
     "max_lines": 400,
     "max_bytes": 16384
+  },
+  "mcp": {
+    "servers": {
+      "render": {
+        "type": "remote",
+        "url": "https://mcp.render.com/mcp",
+        "oauth": false,
+        "headers": {
+          "Authorization": "Bearer {env:RENDER_API_KEY}"
+        }
+      }
+    }
   }
 }
